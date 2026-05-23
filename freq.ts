@@ -5,14 +5,22 @@
 //% groups="['Frequencies']"
 namespace frequencies {
 
-    enum FrequencyChange {
+       enum FrequencyChange {
         //% block="start"
         Start,
         //% block="stop"
         Stop
     }
 
-
+    // Array of Frequency status for all 36 notes (from low C to high C, with flats and sharps)
+    let noteStatus: FrequencyChange[] = [
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange_Stop,
+        FrequencyChange.Stop, FrequencyChange.Stop
+    ];
 
     // Define "matchers", which are a note and tolerance pair as well as an action
     class Matcher {
@@ -47,31 +55,46 @@ namespace frequencies {
 
     /**
      */
-    //% block="on frequence between $lower Hz and $upper Hz with status $status"
+    //% block="detected $change in frequency between $lower Hz and $upper Hz"
     //% draggableParameters="reporter"
     //% lower.min=1 lower.max=5500 lower.defl=420
     //% upper.min=1 upper.max=5500 upper.defl=440
-    export function onFrequencyBetween(lower: number, upper: number, handler: (change: FrequencyChange) => void) {
+    //% weight=200
+    export function detectedFrequencyChangeBetween(lower: number, upper: number, handler: (change: FrequencyChange) => void) {
         handler(FrequencyChange.Start)
     } 
 
     /**
      */
-    //% block="on note $note with $change"
+    //% block="detected $change in $note"
     //% draggableParameters="reporter"
-    export function onNote(handler: (note: Note, change: FrequencyChange) => void) {
+    //% weight=500
+    export function detectedChangeInNoteNote(handler: (note: Note, change: FrequencyChange) => void) {
         handler(Note.C, FrequencyChange.Start)
     } 
 
-    //% block="set detection threshold to $threshold Hz"
+    //% block="set detection threshold to $threshold"
+    //% advanced=true
+    //% weight=500
     export function setDetectionThreshold(threshold: number) {
 
     }
-
-
     //% block
     //% shim=frequencies::dumpSamples
+    //% advanced=true
+    //% weight=50
     export function dumpSamples() {
 
     }
+
+
+    /**
+     */
+    //% block="dominant $frequency $magnitude"
+    //% draggableParameters="reporter"
+    //% advanced=true
+    //% weight=200
+    export function dominantFrequencyAndMagnitude(handler: (frequency: number, magnitude: number) => void) {
+        handler(0,0)
+    } 
 }

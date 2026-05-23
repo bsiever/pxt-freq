@@ -12,7 +12,7 @@ namespace frequencies {
 class FreqSampler : public codal::DataSink {
 public:
     SplitterChannel *channel;
-    int8_t buf[SAMPLE_COUNT];
+    uint16_t buf[SAMPLE_COUNT];
     volatile int count;
     volatile bool capturing;
 
@@ -20,7 +20,7 @@ public:
 
     void setup() {
         MicroBitAudio::requestActivation();
-        channel = uBit.audio.splitter->createChannel();
+        channel = uBit.audio.rawSplitter->createChannel();
         channel->connect(*this);
     }
 
@@ -35,10 +35,10 @@ public:
         if (!capturing)
             return DEVICE_OK;
 
-        int8_t *samples = (int8_t *)data.getBytes();
-        int n = data.length();
+        uint16_t *samples = (uint16_t *)data.getBytes();
+        int n = data.length() / sizeof(uint16_t);
         for (int i = 0; i < n && count < SAMPLE_COUNT; i++)
-            buf[count++] = samples[i];  // int8_t: splitter output is DATASTREAM_FORMAT_8BIT_SIGNED
+            buf[count++] = samples[i];
 
         if (count >= SAMPLE_COUNT) {
             __asm__ volatile("" ::: "memory");
