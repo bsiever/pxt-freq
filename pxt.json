@@ -9,6 +9,7 @@
     "files": [
         "README.md",
         "freq.ts",
+        "freq.cpp"
     ],
     "testFiles": [
         "test.ts"

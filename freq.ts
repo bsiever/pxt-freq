@@ -5,12 +5,14 @@
 //% groups="['Frequencies']"
 namespace frequencies {
 
-    enum FrequenceyChange {
+    enum FrequencyChange {
         //% block="start"
         Start,
         //% block="stop"
         Stop
     }
+
+
 
     // Define "matchers", which are a note and tolerance pair as well as an action
     class Matcher {
@@ -49,20 +51,27 @@ namespace frequencies {
     //% draggableParameters="reporter"
     //% lower.min=1 lower.max=5500 lower.defl=420
     //% upper.min=1 upper.max=5500 upper.defl=440
-    export function onFrequencyBetween(lower: number, upper: number, handler: (change: FrequenceyChange) => void) {
-        handler(FrequenceyChange.Start)
+    export function onFrequencyBetween(lower: number, upper: number, handler: (change: FrequencyChange) => void) {
+        handler(FrequencyChange.Start)
     } 
 
     /**
      */
     //% block="on note $note with $change"
     //% draggableParameters="reporter"
-    export function onNote(handler: (note: Note, change: FrequenceyChange) => void) {
-        handler(Note.C, FrequenceyChange.Start)
+    export function onNote(handler: (note: Note, change: FrequencyChange) => void) {
+        handler(Note.C, FrequencyChange.Start)
     } 
 
     //% block="set detection threshold to $threshold Hz"
     export function setDetectionThreshold(threshold: number) {
+
+    }
+
+
+    //% block
+    //% shim=frequencies::dumpSamples
+    export function dumpSamples() {
 
     }
 }
