@@ -26,8 +26,7 @@
  * limitations under the License.
  */
 
-#include "dsp/transform_functions.h"
-#include "arm_common_tables.h"
+#include "arm_compiler_specific.h"
 
 void arm_bitreversal_f32(
         float32_t * pSrc,

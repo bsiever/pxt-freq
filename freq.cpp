@@ -1,6 +1,6 @@
 #include "pxt.h"
 #include "MicroBit.h"
-#include "cmsis-dsp/arm_math.h"
+#include "cmsis-dsp/rfft_q15_api.h"
 
 using namespace pxt;
 

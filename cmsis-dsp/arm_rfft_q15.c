@@ -28,9 +28,6 @@
  */
 #include "arm_compiler_specific.h"
 
-
-#include "dsp/transform_functions.h"
-
 /* ----------------------------------------------------------------------
  * Internal functions prototypes
  * -------------------------------------------------------------------- */

@@ -6,7 +6,7 @@
    and as consequence are in a private header.
 */
 
-#if defined (_MSC_VER ) 
+#if defined (_MSC_VER )
 #pragma warning(push)
 #pragma warning(disable:4127)
 #pragma warning(disable:4244)
@@ -16,5 +16,10 @@
 #pragma warning(disable:4310)
 
 #endif
+
+/* Pull in the minimal self-contained API header. This pre-defines include
+   guards for all CMSIS-DSP headers that are not needed or can't be resolved
+   from their relative paths, and provides all required types and declarations. */
+#include "rfft_q15_api.h"
 
 #endif
