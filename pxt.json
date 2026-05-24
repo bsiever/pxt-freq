@@ -9,7 +9,13 @@
     "files": [
         "README.md",
         "freq.ts",
-        "freq.cpp"
+        "freq.cpp",
+        "cmsis-dsp/arm_rfft_init_q15.c",
+        "cmsis-dsp/arm_rfft_q15.c",
+        "cmsis-dsp/arm_cfft_q15.c",
+        "cmsis-dsp/arm_bitreversal.c",
+        "cmsis-dsp/arm_common_tables.c",
+        "cmsis-dsp/arm_const_structs.c"
     ],
     "testFiles": [
         "test.ts"

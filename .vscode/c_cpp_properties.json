@@ -1,0 +1,18 @@
+{
+    "configurations": [
+        {
+            "name": "microbit",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/cmsis-dsp"
+            ],
+            "defines": [
+                "MICROBIT_CODAL=1"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}
