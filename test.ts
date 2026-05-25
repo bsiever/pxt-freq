@@ -1,7 +1,7 @@
 
 basic.showString("Start")
 serial.writeLine("Start")
-
+frequencies.setup()
 // Show "ping" ever 5 s
 // loops.everyInterval(5000, function () {
 //     serial.writeLine("ping")

@@ -10,14 +10,23 @@ using namespace pxt;
 
 namespace frequencies {
 
+static int16_t q15buf[SAMPLE_COUNT];
+// arm_rfft_q15 requires 2*N output values (complex spectrum)
+static int16_t fftOutput[SAMPLE_COUNT * 2];
+
+static arm_rfft_instance_q15 fftInstance;
+
+
+
 class FreqSampler : public codal::DataSink {
 public:
     SplitterChannel *channel;
     int16_t buf[SAMPLE_COUNT];
     volatile int count;
     volatile bool capturing;
+    int32_t dcSum;
 
-    FreqSampler() : channel(nullptr), count(0), capturing(false) {}
+    FreqSampler() : channel(nullptr), count(0), capturing(false), dcSum(0) {}
 
     void setup() {
         MicroBitAudio::requestActivation();
@@ -27,23 +36,32 @@ public:
 
     void startCapture() {
         count = 0;
+        dcSum = 0;
         __asm__ volatile("" ::: "memory");
         capturing = true;
     }
 
     virtual int pullRequest() override {
         ManagedBuffer data = channel->pull();
-        if (!capturing)
-            return DEVICE_OK;
+        // if (!capturing)
+        //     return DEVICE_OK;
 
         int16_t *samples = (int16_t *)data.getBytes();
         int n = data.length() / sizeof(int16_t);
-        for (int i = 0; i < n && count < SAMPLE_COUNT; i++)
-            buf[count++] = samples[i];
+        for (int i = 0; i < n && count < SAMPLE_COUNT; i++) {
+            buf[count] = samples[i];
+            dcSum += samples[i];
+            count++;
+        }
 
         if (count >= SAMPLE_COUNT) {
-            __asm__ volatile("" ::: "memory");
-            capturing = false;
+            int16_t dc = (int16_t)(dcSum / SAMPLE_COUNT);
+            for (int i = 0; i < SAMPLE_COUNT; i++)
+                q15buf[i] = (int16_t)(((int32_t)buf[i] - dc) << 2);
+            arm_rfft_q15(&fftInstance, q15buf, fftOutput);
+
+                // __asm__ volatile("" ::: "memory");
+            // capturing = false;
         }
 
         return DEVICE_OK;
@@ -52,90 +70,53 @@ public:
 
 static FreqSampler *sampler = nullptr;
 
-static void ensureInit() {
-    if (!sampler) {
-        sampler = new FreqSampler();
-        sampler->setup();
-    }
-}
-
-static int16_t q15buf[SAMPLE_COUNT];
-// arm_rfft_q15 requires 2*N output values (complex spectrum)
-static int16_t fftOutput[SAMPLE_COUNT * 2];
-static arm_rfft_instance_q15 fftInstance;
-static bool fftInitialized = false;
-
-// Converts 14-bit signed ADC samples (stored as int16_t) to Q15.
-// rawSplitter data has a DC bias (the StreamNormalizer on the splitter path
-// exists specifically to remove it). We estimate DC as the mean of the
-// captured buffer, subtract it, then left-shift by 2 to scale the 14-bit
-// range to Q15 [-32768, 32764].
-static void convertToQ15() {
-    int32_t sum = 0;
-    for (int i = 0; i < SAMPLE_COUNT; i++)
-        sum += sampler->buf[i];
-    int16_t dc = (int16_t)(sum / SAMPLE_COUNT);
-
-    for (int i = 0; i < SAMPLE_COUNT; i++)
-        q15buf[i] = (int16_t)(((int32_t)sampler->buf[i] - dc) << 2);
-}
-
-static void ensureFFTInit() {
-    if (!fftInitialized) {
-        arm_rfft_init_q15(&fftInstance, SAMPLE_COUNT, 0, 1);
-        fftInitialized = true;
-    }
-}
-
 } // namespace frequencies
 
 #endif // MICROBIT_CODAL
 
 namespace frequencies {
 
+//% advanced=true
+void setup() {
+    uBit.serial.printf("C++ setup() / configuring samples and starting capture\n");
+
+    if (sampler) return;
+    sampler = new FreqSampler();
+    sampler->setup();
+    arm_rfft_init_q15(&fftInstance, SAMPLE_COUNT, 0, 1);
+    sampler->startCapture();
+    uBit.audio.activateMic();
+}
+
 //%
 void dumpSamples() {
 #if MICROBIT_CODAL
-    uBit.serial.printf("Starting Capture\n");
-    uBit.audio.activateMic();
-    ensureInit();
-    sampler->startCapture();
-    while (sampler->capturing)
-        fiber_sleep(1);
-
-    uBit.serial.printf("Samples:\n");
-    for (int i = 0; i < SAMPLE_COUNT; i++)
-        uBit.serial.printf("%d\n", sampler->buf[i]);
-
-    convertToQ15();
-    ensureFFTInit();
-    // q15buf is modified in place as scratch during the FFT
+    setup();
+    // sampler->startCapture();
+    // while (sampler->capturing)
+    //     fiber_sleep(1);
     arm_rfft_q15(&fftInstance, q15buf, fftOutput);
-
-    // Print unique bins 0..N/2 (real and imaginary parts)
-    uBit.serial.printf("FFT (bin,real,imag):\n");
+    uBit.serial.printf("FFT (bin,real,imag) \n");
     for (int k = 0; k <= SAMPLE_COUNT / 2; k++)
-        uBit.serial.printf("%d,%d,%d\n", k, fftOutput[2 * k], fftOutput[2 * k + 1]);
+        uBit.serial.printf("%d %d hZ \t %d,%d,%d\n", k, (int)(k*43.4), fftOutput[2 * k], fftOutput[2 * k + 1]);
 #else
     target_panic(PANIC_VARIANT_NOT_SUPPORTED);
 #endif
 }
 
-//%
-void runFFT() {
-#if MICROBIT_CODAL
-    uBit.audio.activateMic();
-    ensureInit();
-    sampler->startCapture();
-    while (sampler->capturing)
-        fiber_sleep(1);
-    convertToQ15();
-    ensureFFTInit();
-    // q15buf is used as scratch and modified in place by arm_rfft_q15
-    arm_rfft_q15(&fftInstance, q15buf, fftOutput);
-#else
-    target_panic(PANIC_VARIANT_NOT_SUPPORTED);
-#endif
-}
+// //%
+// void runFFT() {
+// #if MICROBIT_CODAL
+//     uBit.audio.activateMic();
+//     ensureInit();
+//     sampler->startCapture();
+//     while (sampler->capturing)
+//         fiber_sleep(1);
+//     // q15buf is used as scratch and modified in place by arm_rfft_q15
+//     arm_rfft_q15(&fftInstance, q15buf, fftOutput);
+// #else
+//     target_panic(PANIC_VARIANT_NOT_SUPPORTED);
+// #endif
+// }
 
 } // namespace frequencies
