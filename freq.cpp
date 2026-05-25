@@ -406,6 +406,9 @@ int detectNote(const float *samples, float threshold) {
 static volatile bool resultsValid = false;
 static float notePowers[NUM_NOTES];
 static int   noteCents[NUM_NOTES];
+static float   avgNotePower = 0;
+static float   maxNotePower = 0;
+static Action notesUpdatedAction = nullptr;
 
 static int iteration = 0;
 static void processFiber() {
@@ -442,12 +445,24 @@ static void processFiber() {
             for (int k = 0; k < 5; k++) if (p[k] > peak) peak = p[k];
             float total = p[0]+p[1]+p[2]+p[3]+p[4];
             float x = (-2.0f*p[0] - 1.0f*p[1] + 0.0f*p[2] + 1.0f*p[3] + 2.0f*p[4]) / total;
-            notePowers[i] = peak;
+            notePowers[i] = fabs(peak);
             noteCents[i]  = (int)(x * 1000.0f);
         }
+        float sum = 0.0f;
+        maxNotePower = 0;
+        for (int i = 0; i < NUM_NOTES; i++)  {
+            sum += notePowers[i];
+            if (notePowers[i] > maxNotePower) maxNotePower = notePowers[i];
+        }
+        avgNotePower = sum / (float)NUM_NOTES;
+        // / ((float)BLOCK_SIZE * BLOCK_SIZE) * 1000.0f);
+
         __asm__ volatile("" ::: "memory");
         resultsValid = true;
         iteration++;
+
+        if (notesUpdatedAction)
+            pxt::runAction0(notesUpdatedAction);
     }
 }
 
@@ -491,19 +506,55 @@ void dumpSamples() {
 #endif
 }
 
-// //%
-// void runFFT() {
-// #if MICROBIT_CODAL
-//     uBit.audio.activateMic();
-//     ensureInit();
-//     sampler->startCapture();
-//     while (sampler->capturing)
-//         fiber_sleep(1);
-//     // q15buf is used as scratch and modified in place by arm_rfft_q15
-//     arm_rfft_q15(&fftInstance, q15buf, fftOutput);
-// #else
-//     target_panic(PANIC_VARIANT_NOT_SUPPORTED);
-// #endif
-// }
+//%
+void onNotesUpdated(Action a) {
+    if (notesUpdatedAction) pxt::decr(notesUpdatedAction);
+    notesUpdatedAction = a;
+    if (a) pxt::incr(a);
+}
+
+//%
+int getNumNotes() {
+#if MICROBIT_CODAL
+    return NUM_NOTES;
+#else
+    return 0;
+#endif
+}
+
+// Returns normalized power for note i, scaled by 1000 (i.e. 1000 = full-scale).
+//%
+float getNotePower(int i) {
+#if MICROBIT_CODAL
+    if (i < 0 || i >= NUM_NOTES) return 0;
+    return notePowers[i];
+#else
+    return 0;
+#endif
+}
+
+// Returns the mean normalized power across all notes.
+//%
+float getAvgNotePower() {
+    return avgNotePower;
+}
+
+// Returns the max note power
+//%
+float getMaxNotePower() {
+    return maxNotePower;
+}
+
+
+// Returns the cents error for note i (range roughly -2000 to +2000; divide by 40 for cents).
+//%
+int getNoteCents(int i) {
+#if MICROBIT_CODAL
+    if (i < 0 || i >= NUM_NOTES) return 0;
+    return noteCents[i];
+#else
+    return 0;
+#endif
+}
 
 } // namespace frequencies

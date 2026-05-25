@@ -1,4 +1,16 @@
 
+    enum FrequencyChange {
+        //% block="start"
+        Start,
+        //% block="starting",
+        Starting,
+        //% block="stop"
+        Stop, 
+        //% block="stopping"
+        Stopping
+     }
+
+
 //% color=#6a8694
 //% icon="\uf001"
 //% block="Frequencies"
@@ -6,113 +18,29 @@
 namespace frequencies {
 
 
-    // TODO: Setup timer / interrupt to do frequency analysis every X ms and call the appropriate handlers when we detect changes in frequency or magnitude.  We can use the CMSIS DSP library for the FFT and frequency analysis.  We should also have a function that allows users to set the detection threshold for detecting changes in frequency, so that they can adjust the sensitivity of the frequency change detection.
-    // Then update FrequencyChange records and call all three types of handlers if needed. 
-
-
-    enum FrequencyChange {
-        //% block="start"
-        Start,
-        //% block="stop"
-        Stop
-    }
-
-    // Array of Frequency status for all 36 notes (from low C to high C, with flats and sharps)
+    // Array of Frequency status for all 48 notes (C3–B6)
     let noteStatus: FrequencyChange[] = [
         FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
         FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
         FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
         FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
         FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
-        FrequencyChange.Stop, FrequencyChange.Stop
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
+        FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
     ];
-
-    // Array of frequencies for the 36 notes from C3 to B6
-    let noteFrequencies: number[] = [
-        130.81, 138.59, 146.83, 155.56, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00, 233.08, 246.94,
-        261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
-        523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99
-    ];
-        
-
-    // Convert a frequency to a note index (0-35, corresponding to the 36 notes from low C to high C, with flats and sharps)
-    // Find the "closest" note based on eucledean distance between the frequency and the note frequencies, and return that note's index.  If the frequency is exactly in between two notes, return the higher note.
-    // Do binary search to find the closest note and then check the neighbors and use euclidean distance to determine which is closest.
-    function frequencyToNoteIndex(frequency: number): number {
-        let low = 0;
-        let high = noteFrequencies.length - 1;
-        while (low <= high) {
-            let mid = Math.floor((low + high) / 2);
-            if (noteFrequencies[mid] === frequency) {
-                return mid;
-            } else if (noteFrequencies[mid] < frequency) {
-                low = mid + 1;
-            } else {
-                high = mid - 1;
-            }
-        }
-        // low is now the index of the smallest note that is higher than the frequency, and high is the index of the largest note that is lower than the frequency.  Check which of these two notes is closer to the frequency and return that index.  If low is out of bounds, return high.  If high is out of bounds, return low.
-        if (low >= noteFrequencies.length) {
-            return high;
-        }
-        if (high < 0) {
-            return low;
-        }
-        let lowDiff = noteFrequencies[low] - frequency;
-        let highDiff = frequency - noteFrequencies[high];
-        if (lowDiff < highDiff) {
-            return low;
-        } else {
-            return high;
-        }
-    }
-
-
-    // Convert a Note to a string for display in the block editor
-    // Include the number as well, e.g., A4, C#3, etc.
-    function noteToString(noteIndex: number): string {
-        let noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-        let octave = Math.floor(noteIndex / 12) - 1; // Calculate octave number based on index
-        let noteName = noteNames[noteIndex % 12]; // Get note name based on index
-        return noteName + octave.toString(); // Combine note name and octave for display
-    }   
-
-    // // Convert a raw frequency to the closest Note object (closest in euclidean distance between the frequency and the note frequencies).  If the frequency is exactly in between two notes, return the higher note.
-    // function frequencyToNote(frequency: number): Note {
-    //     let noteIndex = frequencyToNoteIndex(frequency);
-    //     return Note.create(noteIndex, noteToString(noteIndex), noteFrequencies[noteIndex]);
-    // }
-
 
     // Array of note handlers that will be called when a note is detected as starting or stopping
-    let noteHandlers: ((note: Note, change: FrequencyChange) => void)[] = [];
-    // Array of frequency handlers that will be called when a frequency change is detected within a certain range
-    let frequencyHandlers: ((change: FrequencyChange, frequency: number) => void)[] = [];
-    // Array of dominant frequency handlers that will be called when a dominant frequency and magnitude is detected
-    let dominantFrequencyHandlers: ((frequency: number, magnitude: number) => void)[] = [];
+    let noteHandlers: ((note: Note, change: FrequencyChange, cents: number) => void)[] = [];
+
 
     /**
      */
-    //% block="detected $change in frequency between $lower Hz and $upper Hz"
-    //% draggableParameters="reporter"
-    //% lower.min=1 lower.max=5500 lower.defl=420
-    //% upper.min=1 upper.max=5500 upper.defl=440
-    //% weight=200
-    export function detectedFrequencyChangeBetween(lower: number, upper: number, handler: (change: FrequencyChange) => void) {
-        // Add handler to collection of frequency handlers, along with the specified frequency range
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        frequencyHandlers.push((change: FrequencyChange, frequency: number) => {
-            if (frequency >= lower && frequency <= upper) {
-                handler(change)
-            }
-        })  
-    } 
-    /**
-     */
-    //% block="detected $change in $note"
+    //% block="detected $change in $note ($cents)"
     //% draggableParameters="reporter"
     //% weight=500
-    export function detectedChangeInNote(handler: (note: Note, change: FrequencyChange) => void) {
+    export function detectedChangeInNote(handler: (note: Note, change: FrequencyChange, cents: number) => void) {
+        serial.writeLine("Adding note handler");
         // Add handler to collection of note handlers
         setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
         noteHandlers.push(handler)
@@ -122,7 +50,7 @@ namespace frequencies {
     //% advanced=true
     //% weight=500
     export function setDetectionThreshold(threshold: number) {
-
+        0;
     }
 
     //% block
@@ -130,13 +58,161 @@ namespace frequencies {
     //% advanced=true
     //% weight=50
     export function dumpSamples() {
-
+        0;
     }
+
+    // Array of notes mapping C++ index (0=C3 … B5) to Note enum values
+    const note = [
+        Note.C3, Note.CSharp3, Note.D3, Note.Eb3, Note.E3, Note.F3,
+        Note.FSharp3, Note.G3, Note.GSharp3, Note.A3, Note.Bb3, Note.B3,
+        Note.C4, Note.CSharp4, Note.D4, Note.Eb4, Note.E4, Note.F4,
+        Note.FSharp4, Note.G4, Note.GSharp4, Note.A4, Note.Bb4, Note.B4,
+        Note.C5, Note.CSharp5, Note.D5, Note.Eb5, Note.E5, Note.F5,
+        Note.FSharp5, Note.G5, Note.GSharp5, Note.A5, Note.Bb5, Note.B5
+    ];
+
+    // Array to convert Note enum values to note name strings for printing to the console
+    const noteNames = [
+        "C3", "C#3", "D3", "Eb3", "E3", "F3",
+        "F#3", "G3", "G#3", "A3", "Bb3", "B3",
+        "C4", "C#4", "D4", "Eb4", "E4", "F4",
+        "F#4", "G4", "G#4", "A4", "Bb4", "B4",
+        "C5", "C#5", "D5", "Eb5", "E5", "F5",
+        "F#5", "G5", "G#5", "A5", "Bb5", "B5"
+    ];
+
+    // Function to convert Note enum value to string
+    export function noteToString(note: Note): string {
+        // Switch statement to convert Note enum value to string
+        switch (note) {
+            case Note.C3: return "C3";
+            case Note.CSharp3: return "C#3";
+            case Note.D3: return "D3";
+            case Note.Eb3: return "Eb3";
+            case Note.E3: return "E3";
+            case Note.F3: return "F3";
+            case Note.FSharp3: return "F#3";
+            case Note.G3: return "G3";
+            case Note.GSharp3: return "G#3";
+            case Note.A3: return "A3";
+            case Note.Bb3: return "Bb3";
+            case Note.B3: return "B3";
+            case Note.C4: return "C4";
+            case Note.CSharp4: return "C#4";
+            case Note.D4: return "D4";
+            case Note.Eb4: return "Eb4";
+            case Note.E4: return "E4";
+            case Note.F4: return "F4";
+            case Note.FSharp4: return "F#4";
+            case Note.G4: return "G4";
+            case Note.GSharp4: return "G#4";
+            case Note.A4: return "A4";
+            case Note.Bb4: return "Bb4";
+            case Note.B4: return "B4";
+            case Note.C5: return "C5";
+            case Note.CSharp5: return "C#5";
+            case Note.D5: return "D5";
+            case Note.Eb5: return "Eb5";
+            case Note.E5: return "E5";
+            case Note.F5: return "F5";
+            case Note.FSharp5: return "F#5";
+            case Note.G5: return "G5";
+            case Note.GSharp5: return "G#5";
+            case Note.A5: return "A5";
+            case Note.Bb5: return "Bb5";
+            case Note.B5: return "B5";
+            default: return "";
+        }
+    }
+
+    /** Convert an index to a Note enum */
+    function getNote(index: number): Note {
+        return note[index];
+    }
+
+    // Shim for onNotesUpdated - called by C++ when new results are available
+    //% shim=frequencies::onNotesUpdated
+    export function onNotesUpdated(handler: Action) {
+    }
+
+    /**
+     * Register a handler called each time note detection completes.
+     * avgPower is the mean normalized power across all notes, scaled by 1000.
+     * Use getNotePower(i) and getNoteCents(i) inside the handler to read per-note results.
+     */
+    //% block="on notes updated (avgPower $avgPower)"
+    //% draggableParameters="reporter"
+    //% weight=100
+    //% advanced=true
+    export function doOnNotesUpdated() {
+        let avgPower = getAvgNotePower();
+        let maxPower = getMaxNotePower();
+        let medianPower = (avgPower - maxPower) / 2;
+        let threshold = 10 * avgPower;
+        // Iterate through each "Note" and determine if it has started or stopped since the last time we checked
+        for (let i = 0; i < note.length; i++) {
+            let power = Math.abs(getNotePower(i));
+            let cents = getNoteCents(i);
+            // Show the average power 
+            if (power > threshold && noteStatus[i] === FrequencyChange.Stop) {
+                // Note has started since last time we checked
+                noteStatus[i] = FrequencyChange.Starting;
+            } else if (power > threshold && noteStatus[i] === FrequencyChange.Starting) {
+                // Note has started since last time we checked
+                noteStatus[i] = FrequencyChange.Start;
+                noteHandlers.forEach(h => h(note[i], FrequencyChange.Start, cents));
+            } else if (power <= threshold && noteStatus[i] === FrequencyChange.Start) {
+                // Note has stopped since last time we checked
+                noteStatus[i] = FrequencyChange.Stopping;
+            } else if (power <= threshold  && noteStatus[i] === FrequencyChange.Stopping) {
+                // Note has stopped since last time we checked
+                noteStatus[i] = FrequencyChange.Stop;
+                noteHandlers.forEach(h => h(note[i], FrequencyChange.Stop, cents));
+            }
+        }   
+    }
+
+    /** Returns the number of notes tracked (C3–B6 = 48). */
+    //% shim=frequencies::getNumNotes
+    //% advanced=true
+    export function getNumNotes(): number { return 48; }
+
+    /** Returns the mean normalized power across all notes, scaled by 1000. */
+    //% shim=frequencies::getAvgNotePower
+    //% advanced=true
+    export function getAvgNotePower(): number { return 0; }
+
+    /**
+     * Returns normalized power for note index i, scaled by 1000.
+     * 0 = silence, 1000 = full-scale.
+     */
+    //% shim=frequencies::getNotePower
+    //% advanced=true
+    export function getNotePower(_noteIndex: number): number { return 0; }
+
+    /**
+     * Returns the pitch error for note index i.
+     * Divide by 40 to get cents (range: −50 to +50).
+     */
+    //% shim=frequencies::getNoteCents
+    //% advanced=true
+    export function getNoteCents(_noteIndex: number): number { return 0; }
 
     // Shim for init
     //% shim=frequencies::setup
     export function setup() {
+        0;
+    }
 
+    // Shim for getMaxNotePower
+    //% shim=frequencies::getMaxNotePower
+    export function getMaxNotePower(): number {
+        return 0;
+    }
+
+    export function inititialize() {
+        onNotesUpdated(doOnNotesUpdated);
+        setup();
     }
 
 }
