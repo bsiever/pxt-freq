@@ -302,14 +302,17 @@ static const float goertzelCoeff_hi1[NUM_NOTES] = {
 
 
 
+static float fbuf[BLOCK_SIZE];   // DC-removed snapshot, written by sampler, read by processFiber
+
 class FreqSampler : public codal::DataSink {
 public:
     SplitterChannel *channel;
-    int16_t buf[BLOCK_SIZE];
-    volatile int count;
-    volatile bool capturing;
+    int16_t cbuf[BLOCK_SIZE];    // circular buffer of most-recent samples
+    volatile int  head;          // next write index
+    volatile bool getData;       // processFiber sets this to request a snapshot
+    volatile bool dataReady;     // sampler sets this after writing fbuf
 
-    FreqSampler() : channel(nullptr), count(0), capturing(false) {}
+    FreqSampler() : channel(nullptr), head(0), getData(false), dataReady(false) {}
 
     void setup() {
         MicroBitAudio::requestActivation();
@@ -317,35 +320,38 @@ public:
         channel->connect(*this);
     }
 
-    void startCapture() {
-        count = 0;
-        __asm__ volatile("" ::: "memory");
-        capturing = true;
-    }
-
     virtual int pullRequest() override {
         ManagedBuffer data = channel->pull();
-        if (!capturing)
-            return DEVICE_OK;
-
         int16_t *samples = (int16_t *)data.getBytes();
         int n = data.length() / sizeof(int16_t);
-        for (int i = 0; i < n && count < BLOCK_SIZE; i++) {
-            buf[count] = samples[i];
-            count++;
+        for (int i = 0; i < n; i++) {
+            cbuf[head] = samples[i];
+            if (++head >= BLOCK_SIZE) head = 0;
         }
-
-        if (count >= BLOCK_SIZE) {
+        if (getData) {
+            // Copy the last BLOCK_SIZE samples (entire circular buffer, in order) into fbuf,
+            // removing DC at the same time.
+            int32_t sum = 0;
+            int j = head;
+            for (int i = 0; i < BLOCK_SIZE; i++) {
+                sum += cbuf[j];
+                if (++j >= BLOCK_SIZE) j = 0;
+            }
+            float dc = (float)sum / (float)BLOCK_SIZE;
+            j = head;
+            for (int i = 0; i < BLOCK_SIZE; i++) {
+                fbuf[i] = (float)cbuf[j] - dc;
+                if (++j >= BLOCK_SIZE) j = 0;
+            }
+            getData = false;
             __asm__ volatile("" ::: "memory");
-            capturing = false;
+            dataReady = true;
         }
-
         return DEVICE_OK;
     }
 };
 
 static FreqSampler *sampler = nullptr;
-static float fbuf[BLOCK_SIZE];   // DC-removed float copy of the capture buffer
 
 } // namespace frequencies
 
@@ -353,30 +359,23 @@ static float fbuf[BLOCK_SIZE];   // DC-removed float copy of the capture buffer
 
 namespace frequencies {
 
+static void processFiber();
+
 //% advanced=true
 void setup() {
-    uBit.serial.printf("C++ setup() / configuring samples and starting capture\n");
-
     if (sampler) return;
     sampler = new FreqSampler();
     sampler->setup();
-    sampler->startCapture();
     uBit.audio.activateMic();
+#if MICROBIT_CODAL
+    create_fiber(processFiber);
+#endif
 }
 
 // Returns 2*cos(2π*freq/FS) — the Goertzel recurrence coefficient for a given frequency.
 float goertzelCoeffFor(float freq) {
     return 2.0f * cosf(2.0f * 3.14159265358979323846f * freq / FS);
 }
-
-// Mean of the block; subtracted from each sample to remove DC bias from the ADC.
-static float computeDC(const int16_t *samples) {
-    int32_t sum = 0;
-    for (int n = 0; n < BLOCK_SIZE; n++)
-        sum += samples[n];
-    return (float)sum / (float)BLOCK_SIZE;
-}
-
 
 // Returns Goertzel power for a pre-processed (DC-removed) float buffer.
 float goertzelPower(float coeff, const float *samples) {
@@ -391,7 +390,7 @@ float goertzelPower(float coeff, const float *samples) {
 }
 
 // Detect the loudest note; returns index (0=C3 … 47=B6), or -1 if none exceeds threshold.
-// Expects a DC-removed float buffer (build with computeDC + fbuf conversion first).
+// Expects a DC-removed float buffer.
 int detectNote(const float *samples, float threshold) {
     int   best      = -1;
     float bestPower = threshold;
@@ -404,92 +403,90 @@ int detectNote(const float *samples, float threshold) {
 }
 
 
+static volatile bool resultsValid = false;
 static float notePowers[NUM_NOTES];
-static int noteCents[NUM_NOTES];
+static int   noteCents[NUM_NOTES];
+
+static int iteration = 0;
+static void processFiber() {
+    while (true) {
+        sampler->getData = true;
+        while (!sampler->dataReady)
+            fiber_sleep(1);
+        sampler->dataReady = false;
+        __asm__ volatile("" ::: "memory");
+
+        float p0 = goertzelPower(goertzelCoeff_mid[0], fbuf);
+        for (int i = 0; i < NUM_NOTES; i++) {
+            const float c1 = goertzelCoeff_lo1[i];
+            const float c2 = goertzelCoeff[i];
+            const float c3 = goertzelCoeff_hi1[i];
+            const float c4 = goertzelCoeff_mid[i+1];
+            float s1a=0,s2a=0, s1b=0,s2b=0, s1c=0,s2c=0, s1d=0,s2d=0;
+            for (int n = 0; n < BLOCK_SIZE; n++) {
+                float samp = fbuf[n], t;
+                t = samp + c1*s1a - s2a;  s2a=s1a; s1a=t;
+                t = samp + c2*s1b - s2b;  s2b=s1b; s1b=t;
+                t = samp + c3*s1c - s2c;  s2c=s1c; s1c=t;
+                t = samp + c4*s1d - s2d;  s2d=s1d; s1d=t;
+            }
+            float p[5] = {
+                p0,
+                s1a*s1a + s2a*s2a - c1*s1a*s2a,
+                s1b*s1b + s2b*s2b - c2*s1b*s2b,
+                s1c*s1c + s2c*s2c - c3*s1c*s2c,
+                s1d*s1d + s2d*s2d - c4*s1d*s2d,
+            };
+            p0 = p[4];
+            float peak = 0.0f;
+            for (int k = 0; k < 5; k++) if (p[k] > peak) peak = p[k];
+            float total = p[0]+p[1]+p[2]+p[3]+p[4];
+            float x = (-2.0f*p[0] - 1.0f*p[1] + 0.0f*p[2] + 1.0f*p[3] + 2.0f*p[4]) / total;
+            notePowers[i] = peak;
+            noteCents[i]  = (int)(x * 1000.0f);
+        }
+        __asm__ volatile("" ::: "memory");
+        resultsValid = true;
+        iteration++;
+    }
+}
 
 //%
 void dumpSamples() {
 #if MICROBIT_CODAL
     setup();
-    sampler->startCapture();
-    while (sampler->capturing)
-        fiber_sleep(1);
+    while (!resultsValid)
+        fiber_sleep(5);
 
-    float dc = computeDC(sampler->buf);
-    for (int n = 0; n < BLOCK_SIZE; n++)
-        fbuf[n] = (float)sampler->buf[n] - dc;
-
-    long startTime = uBit.systemTime();
-
-    float p0 = goertzelPower(goertzelCoeff_mid[0], fbuf);
+    // Snapshot before printing: uBit.sleep() in the print loop yields to processFiber,
+    // which would overwrite notePowers/noteCents with a new batch mid-print.
+    float powers[NUM_NOTES];
+    int   cents[NUM_NOTES];
     for (int i = 0; i < NUM_NOTES; i++) {
-        const float c1 = goertzelCoeff_lo1[i];
-        const float c2 = goertzelCoeff[i];
-        const float c3 = goertzelCoeff_hi1[i];
-        const float c4 = goertzelCoeff_mid[i+1];
-        float s1a=0,s2a=0, s1b=0,s2b=0, s1c=0,s2c=0, s1d=0,s2d=0;
-        for (int n = 0; n < BLOCK_SIZE; n++) {
-            float samp = fbuf[n], t;
-            t = samp + c1*s1a - s2a;  s2a=s1a; s1a=t;
-            t = samp + c2*s1b - s2b;  s2b=s1b; s1b=t;
-            t = samp + c3*s1c - s2c;  s2c=s1c; s1c=t;
-            t = samp + c4*s1d - s2d;  s2d=s1d; s1d=t;
-        }
-        float p[5] = {
-            p0,
-            s1a*s1a + s2a*s2a - c1*s1a*s2a,  // -25¢
-            s1b*s1b + s2b*s2b - c2*s1b*s2b,  //   0¢
-            s1c*s1c + s2c*s2c - c3*s1c*s2c,  // +25¢
-            s1d*s1d + s2d*s2d - c4*s1d*s2d,  // +50¢
-        };
-        p0 = p[4];
-
-        float peak = 0.0f;
-        for (int k = 0; k < 5; k++) if (p[k] > peak) peak = p[k];
-
-        float total = p[0]+p[1]+p[2]+p[3]+p[4];
-        float x = (-2.0f*p[0] - 1.0f*p[1] + 0.0f*p[2] + 1.0f*p[3] + 2.0f*p[4]) / total;
-        int centsError = (int)(x * 1000.0f);
-        notePowers[i] = peak;
-        noteCents[i] = centsError;
+        powers[i] = notePowers[i];
+        cents[i]  = noteCents[i];
     }
 
-    long endTime = uBit.systemTime();
-    long elapsedTime = endTime - startTime;
-    uBit.serial.printf("Computation time: %d ms\n", (int)elapsedTime);
     float maxPower = 0.0f;
     float centsAtMaxPower = 0.0f;
     int maxIndex = -1;
-
-    for(int i = 0; i < NUM_NOTES; i++) {
-        if(notePowers[i] > maxPower) { maxPower = notePowers[i]; maxIndex = i;  centsAtMaxPower = noteCents[i]; }
-        float pNorm = notePowers[i] / ((float)BLOCK_SIZE * BLOCK_SIZE);
+    uBit.serial.printf("Iteration %d:\n", iteration);
+    for (int i = 0; i < NUM_NOTES; i++) {
+        if (powers[i] > maxPower) { maxPower = powers[i]; maxIndex = i; centsAtMaxPower = cents[i]; }
+        float pNorm = powers[i] / ((float)BLOCK_SIZE * BLOCK_SIZE);
         int whole = (int)pNorm;
-        int frac  = (int)((pNorm - whole) * 1000);   // 3 decimal places
+        int frac  = (int)((pNorm - whole) * 1000);
         const char *pad = (frac < 10) ? "00" : (frac < 100) ? "0" : "";
-        uBit.serial.printf("%s=%d.%s%d centsError %d\n", noteName[i], whole, pad, frac, noteCents[i]);
-        // Wait for the serial buffer to flush before starting the next line, to avoid interleaving output
+        uBit.serial.printf("%s=%d.%s%d centsError %d\n", noteName[i], whole, pad, frac, cents[i]);
         uBit.sleep(100);
     }
-    if(maxIndex >= 0) {
-        uBit.serial.printf("Loudest note %s (power=%d; centsError=%d)\n", noteName[maxIndex], (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)), centsAtMaxPower);
+    if (maxIndex >= 0) {
+        uBit.serial.printf("Loudest note %s (power=%d; centsError=%d)\n",
+            noteName[maxIndex], (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)), (int)centsAtMaxPower);
     } else {
         uBit.serial.printf("No note detected above threshold\n");
     }
-    // Print computation time
-    // maxPower = 0.0f;
-    // int freqAtMaxPower = 0;
-    // for(int freq = 120; freq <= 2000; freq += 10) {
-    //     float coeff = goertzelCoeffFor(freq);
-    //     float p = goertzelPower(coeff, sampler->buf, dc);
-    //     if(p > maxPower) {
-    //         maxPower = p;
-    //         freqAtMaxPower = freq;
-    //     }
-    // }
-    // uBit.serial.printf("Loudest frequency %d Hz (power=%d)\n", freqAtMaxPower, (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)));
-
-    #else
+#else
     target_panic(PANIC_VARIANT_NOT_SUPPORTED);
 #endif
 }
