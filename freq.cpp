@@ -8,12 +8,23 @@ using namespace pxt;
 
 namespace frequencies {
 
-static const int   NUM_NOTES  = 48;     // C3–B6 = 4 octaves × 12 semitones
+static const int   NUM_NOTES  = 48;     // C3–B6
 static const int   BLOCK_SIZE = 1559;   // ~140 ms at 11136 Hz
 static const float FS         = 11136.0f;
 
-// noteFreq[48]: C3 (130.81 Hz) through B6 (1975.53 Hz)
-// Computed as 440 * 2^((semitone - 9) / 12), where semitone 0 = C3
+// Coverage with 5 bins at -50¢,-25¢,0¢,+25¢,+50¢  (bin spacing = 25 cents)
+// Single-filter -3dB half-width = 4.29 Hz → seamless when 25¢ in Hz < 8.57 Hz
+//
+//  Note    f (Hz)   25¢ (Hz)   overlap/gap        verdict
+//  C3       130.81       1.90   -6.67 Hz    overlap 6.67 Hz  seamless ✓
+//  B3       246.94       3.59   -4.98 Hz    overlap 4.98 Hz  seamless ✓
+//  C4       261.63       3.81   -4.77 Hz    overlap 4.77 Hz  seamless ✓
+//  A4       440.00       6.40   -2.17 Hz    overlap 2.17 Hz  seamless ✓
+//  C5       523.25       7.61   -0.96 Hz    overlap 0.96 Hz  seamless ✓
+//  B5       987.77      14.37   +5.80 Hz    gap ~10¢ dead zone
+//  C6      1046.50      15.22   +6.65 Hz    gap ~11¢ dead zone
+//  B6      1975.53      28.73   +20.16 Hz   gap ~18¢ dead zone
+
 static const float noteFreq[NUM_NOTES] = {
     130.81278265f,  // [ 0] C3
     138.59131549f,  // [ 1] C#3
@@ -65,58 +76,12 @@ static const float noteFreq[NUM_NOTES] = {
    1975.53320502f,  // [47] B6
 };
 
-// goertzelCoeff[48]: 2*cos(2π*f/fs) for each note at fs=11136 Hz
-static const float goertzelCoeff[NUM_NOTES] = {
-    1.99455493f,  // [ 0] C3   ( 130.8128 Hz)
-    1.99388846f,  // [ 1] C#3  ( 138.5913 Hz)
-    1.99314050f,  // [ 2] D3   ( 146.8324 Hz)
-    1.99230096f,  // [ 3] D#3  ( 155.5635 Hz)
-    1.99135898f,  // [ 4] E3   ( 164.8138 Hz)
-    1.99030144f,  // [ 5] F3   ( 174.6141 Hz)
-    1.98911482f,  // [ 6] F#3  ( 184.9972 Hz)
-    1.98778766f,  // [ 7] G3   ( 195.9977 Hz)
-    1.98628881f,  // [ 8] G#3  ( 207.6523 Hz)
-    1.98461182f,  // [ 9] A3   ( 220.0000 Hz)
-    1.98271957f,  // [10] A#3  ( 233.0819 Hz)
-    1.98061853f,  // [11] B3   ( 246.9417 Hz)
-    1.97824932f,  // [12] C4   ( 261.6256 Hz)
-    1.97559111f,  // [13] C#4  ( 277.1826 Hz)
-    1.97260879f,  // [14] D4   ( 293.6648 Hz)
-    1.96926303f,  // [15] D#4  ( 311.1270 Hz)
-    1.96550977f,  // [16] E4   ( 329.6276 Hz)
-    1.96129970f,  // [17] F4   ( 349.2282 Hz)
-    1.95657760f,  // [18] F#4  ( 369.9944 Hz)
-    1.95128169f,  // [19] G4   ( 391.9954 Hz)
-    1.94534286f,  // [20] G#4  ( 415.3047 Hz)
-    1.93868384f,  // [21] A4   ( 440.0000 Hz)
-    1.93121826f,  // [22] A#4  ( 466.1638 Hz)
-    1.92284966f,  // [23] B4   ( 493.8833 Hz)
-    1.91347036f,  // [24] C5   ( 523.2511 Hz)
-    1.90296025f,  // [25] C#5  ( 554.3653 Hz)
-    1.89118545f,  // [26] D5   ( 587.3295 Hz)
-    1.87799687f,  // [27] D#5  ( 622.2540 Hz)
-    1.86322865f,  // [28] E5   ( 659.2551 Hz)
-    1.84669650f,  // [29] F5   ( 698.4565 Hz)
-    1.82819590f,  // [30] F#5  ( 739.9888 Hz)
-    1.80750024f,  // [31] G5   ( 783.9909 Hz)
-    1.78435885f,  // [32] G#5  ( 830.6094 Hz)
-    1.75849503f,  // [33] A5   ( 880.0000 Hz)
-    1.72960396f,  // [34] A#5  ( 932.3275 Hz)
-    1.69735081f,  // [35] B5   ( 987.7666 Hz)
-    1.66136882f,  // [36] C6  (1046.5023 Hz)
-    1.62125772f,  // [37] C#6 (1108.7305 Hz)
-    1.57658241f,  // [38] D6  (1174.6591 Hz)
-    1.52687224f,  // [39] D#6 (1244.5079 Hz)
-    1.47162101f,  // [40] E6  (1318.5102 Hz)
-    1.41028796f,  // [41] F6  (1396.9129 Hz)
-    1.34230024f,  // [42] F#6 (1479.9777 Hz)
-    1.26705710f,  // [43] G6  (1567.9817 Hz)
-    1.18393651f,  // [44] G#6 (1661.2188 Hz)
-    1.09230475f,  // [45] A6  (1760.0000 Hz)
-    0.99152986f,  // [46] A#6 (1864.6550 Hz)
-    0.88099977f,  // [47] B6  (1975.5332 Hz)
+static const char * const noteName[NUM_NOTES] = {
+    "C3",  "C#3", "D3",  "D#3", "E3",  "F3",  "F#3", "G3",  "G#3", "A3",  "A#3", "B3",
+    "C4",  "C#4", "D4",  "D#4", "E4",  "F4",  "F#4", "G4",  "G#4", "A4",  "A#4", "B4",
+    "C5",  "C#5", "D5",  "D#5", "E5",  "F5",  "F#5", "G5",  "G#5", "A5",  "A#5", "B5",
+    "C6",  "C#6", "D6",  "D#6", "E6",  "F6",  "F#6", "G6",  "G#6", "A6",  "A#6", "B6",
 };
-
 
 // goertzelCoeff_mid[NUM_NOTES + 1]:
 //   Each entry is the semitone *boundary* — exactly halfway (in cents)
@@ -180,57 +145,163 @@ static const float goertzelCoeff_mid[NUM_NOTES + 1] = {
     0.82189647f,  // [48]  2033.42 Hz  (above B6)
 };
 
-
-static const char * const noteName[NUM_NOTES] = {
-    "C3",   // [ 0]  130.81 Hz
-    "C#3",  // [ 1]  138.59 Hz
-    "D3",   // [ 2]  146.83 Hz
-    "D#3",  // [ 3]  155.56 Hz
-    "E3",   // [ 4]  164.81 Hz
-    "F3",   // [ 5]  174.61 Hz
-    "F#3",  // [ 6]  185.00 Hz
-    "G3",   // [ 7]  196.00 Hz
-    "G#3",  // [ 8]  207.65 Hz
-    "A3",   // [ 9]  220.00 Hz
-    "A#3",  // [10]  233.08 Hz
-    "B3",   // [11]  246.94 Hz
-    "C4",   // [12]  261.63 Hz
-    "C#4",  // [13]  277.18 Hz
-    "D4",   // [14]  293.66 Hz
-    "D#4",  // [15]  311.13 Hz
-    "E4",   // [16]  329.63 Hz
-    "F4",   // [17]  349.23 Hz
-    "F#4",  // [18]  370.00 Hz
-    "G4",   // [19]  392.00 Hz
-    "G#4",  // [20]  415.30 Hz
-    "A4",   // [21]  440.00 Hz
-    "A#4",  // [22]  466.16 Hz
-    "B4",   // [23]  493.88 Hz
-    "C5",   // [24]  523.25 Hz
-    "C#5",  // [25]  554.37 Hz
-    "D5",   // [26]  587.33 Hz
-    "D#5",  // [27]  622.25 Hz
-    "E5",   // [28]  659.26 Hz
-    "F5",   // [29]  698.46 Hz
-    "F#5",  // [30]  740.00 Hz
-    "G5",   // [31]  784.00 Hz
-    "G#5",  // [32]  830.61 Hz
-    "A5",   // [33]  880.00 Hz
-    "A#5",  // [34]  932.33 Hz
-    "B5",   // [35]  987.77 Hz
-    "C6",   // [36] 1046.50 Hz
-    "C#6",  // [37] 1108.73 Hz
-    "D6",   // [38] 1174.66 Hz
-    "D#6",  // [39] 1244.51 Hz
-    "E6",   // [40] 1318.51 Hz
-    "F6",   // [41] 1396.91 Hz
-    "F#6",  // [42] 1479.98 Hz
-    "G6",   // [43] 1567.98 Hz
-    "G#6",  // [44] 1661.22 Hz
-    "A6",   // [45] 1760.00 Hz
-    "A#6",  // [46] 1864.66 Hz
-    "B6",   // [47] 1975.53 Hz
+// -25 cents from centre
+static const float goertzelCoeff_lo1[NUM_NOTES] = {
+    1.99470986f,  // [ 0] C3   (128.94 Hz)
+    1.99406234f,  // [ 1] C#3  (136.60 Hz)
+    1.99333560f,  // [ 2] D3   (144.73 Hz)
+    1.99251998f,  // [ 3] D#3  (153.33 Hz)
+    1.99160460f,  // [ 4] E3   (162.45 Hz)
+    1.99057729f,  // [ 5] F3   (172.11 Hz)
+    1.98942439f,  // [ 6] F#3  (182.34 Hz)
+    1.98813056f,  // [ 7] G3   (193.19 Hz)
+    1.98667862f,  // [ 8] G#3  (204.68 Hz)
+    1.98504929f,  // [ 9] A3   (216.85 Hz)
+    1.98322096f,  // [10] A#3  (229.74 Hz)
+    1.98116939f,  // [11] B3   (243.40 Hz)
+    1.97886742f,  // [12] C4   (257.87 Hz)
+    1.97628461f,  // [13] C#4  (273.21 Hz)
+    1.97338683f,  // [14] D4   (289.45 Hz)
+    1.97013586f,  // [15] D#4  (306.67 Hz)
+    1.96648889f,  // [16] E4   (324.90 Hz)
+    1.96239795f,  // [17] F4   (344.22 Hz)
+    1.95780938f,  // [18] F#4  (364.69 Hz)
+    1.95266311f,  // [19] G4   (386.38 Hz)
+    1.94689192f,  // [20] G#4  (409.35 Hz)
+    1.94042067f,  // [21] A4   (433.69 Hz)
+    1.93316536f,  // [22] A#4  (459.48 Hz)
+    1.92503215f,  // [23] B4   (486.80 Hz)
+    1.91591628f,  // [24] C5   (515.75 Hz)
+    1.90570087f,  // [25] C#5  (546.42 Hz)
+    1.89425560f,  // [26] D5   (578.91 Hz)
+    1.88143533f,  // [27] D#5  (613.33 Hz)
+    1.86707854f,  // [28] E5   (649.80 Hz)
+    1.85100573f,  // [29] F5   (688.44 Hz)
+    1.83301759f,  // [30] F#5  (729.38 Hz)
+    1.81289322f,  // [31] G5   (772.75 Hz)
+    1.79038815f,  // [32] G#5  (818.70 Hz)
+    1.76523238f,  // [33] A5   (867.38 Hz)
+    1.73712831f,  // [34] A#5  (918.96 Hz)
+    1.70574879f,  // [35] B5   (973.61 Hz)
+    1.67073520f,  // [36] C6  (1031.50 Hz)
+    1.63169579f,  // [37] C#6 (1092.83 Hz)
+    1.58820426f,  // [38] D6  (1157.82 Hz)
+    1.53979889f,  // [39] D#6 (1226.67 Hz)
+    1.48598229f,  // [40] E6  (1299.61 Hz)
+    1.42622220f,  // [41] F6  (1376.89 Hz)
+    1.35995347f,  // [42] F#6 (1458.76 Hz)
+    1.28658181f,  // [43] G6  (1545.50 Hz)
+    1.20548974f,  // [44] G#6 (1637.40 Hz)
+    1.11604536f,  // [45] A6  (1734.77 Hz)
+    1.01761477f,  // [46] A#6 (1837.92 Hz)
+    0.90957892f,  // [47] B6  (1947.21 Hz)
 };
+
+// Centre
+static const float goertzelCoeff[NUM_NOTES] = {
+    1.99455492f,  // [ 0] C3   (130.81 Hz)
+    1.99388844f,  // [ 1] C#3  (138.59 Hz)
+    1.99314043f,  // [ 2] D3   (146.83 Hz)
+    1.99230094f,  // [ 3] D#3  (155.56 Hz)
+    1.99135877f,  // [ 4] E3   (164.81 Hz)
+    1.99030141f,  // [ 5] F3   (174.61 Hz)
+    1.98911478f,  // [ 6] F#3  (185.00 Hz)
+    1.98778311f,  // [ 7] G3   (196.00 Hz)
+    1.98628872f,  // [ 8] G#3  (207.65 Hz)
+    1.98461176f,  // [ 9] A3   (220.00 Hz)
+    1.98273000f,  // [10] A#3  (233.08 Hz)
+    1.98061850f,  // [11] B3   (246.94 Hz)
+    1.97824932f,  // [12] C4   (261.63 Hz)
+    1.97559111f,  // [13] C#4  (277.18 Hz)
+    1.97260879f,  // [14] D4   (293.66 Hz)
+    1.96926303f,  // [15] D#4  (311.13 Hz)
+    1.96550977f,  // [16] E4   (329.63 Hz)
+    1.96129970f,  // [17] F4   (349.23 Hz)
+    1.95657760f,  // [18] F#4  (369.99 Hz)
+    1.95128169f,  // [19] G4   (392.00 Hz)
+    1.94534286f,  // [20] G#4  (415.30 Hz)
+    1.93868384f,  // [21] A4   (440.00 Hz)
+    1.93121826f,  // [22] A#4  (466.16 Hz)
+    1.92284966f,  // [23] B4   (493.88 Hz)
+    1.91347036f,  // [24] C5   (523.25 Hz)
+    1.90296025f,  // [25] C#5  (554.37 Hz)
+    1.89118545f,  // [26] D5   (587.33 Hz)
+    1.87799687f,  // [27] D#5  (622.25 Hz)
+    1.86322865f,  // [28] E5   (659.26 Hz)
+    1.84669650f,  // [29] F5   (698.46 Hz)
+    1.82819590f,  // [30] F#5  (739.99 Hz)
+    1.80750024f,  // [31] G5   (783.99 Hz)
+    1.78435885f,  // [32] G#5  (830.61 Hz)
+    1.75849503f,  // [33] A5   (880.00 Hz)
+    1.72960396f,  // [34] A#5  (932.33 Hz)
+    1.69735081f,  // [35] B5   (987.77 Hz)
+    1.66136882f,  // [36] C6  (1046.50 Hz)
+    1.62125772f,  // [37] C#6 (1108.73 Hz)
+    1.57658241f,  // [38] D6  (1174.66 Hz)
+    1.52687224f,  // [39] D#6 (1244.51 Hz)
+    1.47162101f,  // [40] E6  (1318.51 Hz)
+    1.41028796f,  // [41] F6  (1396.91 Hz)
+    1.34230024f,  // [42] F#6 (1479.98 Hz)
+    1.26705710f,  // [43] G6  (1567.98 Hz)
+    1.18393651f,  // [44] G#6 (1661.22 Hz)
+    1.09230475f,  // [45] A6  (1760.00 Hz)
+    0.99152986f,  // [46] A#6 (1864.66 Hz)
+    0.88099977f,  // [47] B6  (1975.53 Hz)
+};
+
+// +25 cents from centre
+static const float goertzelCoeff_hi1[NUM_NOTES] = {
+    1.99439544f,  // [ 0] C3   (132.72 Hz)
+    1.99370945f,  // [ 1] C#3  (140.61 Hz)
+    1.99293955f,  // [ 2] D3   (148.97 Hz)
+    1.99207549f,  // [ 3] D#3  (157.83 Hz)
+    1.99110576f,  // [ 4] E3   (167.21 Hz)
+    1.99001745f,  // [ 5] F3   (177.15 Hz)
+    1.98879611f,  // [ 6] F#3  (187.69 Hz)
+    1.98742550f,  // [ 7] G3   (198.85 Hz)
+    1.98588742f,  // [ 8] G#3  (210.67 Hz)
+    1.98416145f,  // [ 9] A3   (223.20 Hz)
+    1.98222470f,  // [10] A#3  (236.47 Hz)
+    1.98005153f,  // [11] B3   (250.53 Hz)
+    1.97761317f,  // [12] C4   (265.43 Hz)
+    1.97487738f,  // [13] C#4  (281.21 Hz)
+    1.97180806f,  // [14] D4   (297.94 Hz)
+    1.96836475f,  // [15] D#4  (315.65 Hz)
+    1.96450213f,  // [16] E4   (334.42 Hz)
+    1.96016947f,  // [17] F4   (354.31 Hz)
+    1.95530998f,  // [18] F#4  (375.38 Hz)
+    1.94986013f,  // [19] G4   (397.70 Hz)
+    1.94374884f,  // [20] G#4  (421.35 Hz)
+    1.93689665f,  // [21] A4   (446.40 Hz)
+    1.92921477f,  // [22] A#4  (472.94 Hz)
+    1.92060406f,  // [23] B4   (501.07 Hz)
+    1.91095383f,  // [24] C5   (530.86 Hz)
+    1.90014067f,  // [25] C#5  (562.43 Hz)
+    1.88802703f,  // [26] D5   (595.87 Hz)
+    1.87445978f,  // [27] D#5  (631.30 Hz)
+    1.85926861f,  // [28] E5   (668.84 Hz)
+    1.84226435f,  // [29] F5   (708.62 Hz)
+    1.82323713f,  // [30] F#5  (750.75 Hz)
+    1.80195452f,  // [31] G5   (795.39 Hz)
+    1.77815953f,  // [32] G#5  (842.69 Hz)
+    1.75156861f,  // [33] A5   (892.80 Hz)
+    1.72186963f,  // [34] A#5  (945.89 Hz)
+    1.68871994f,  // [35] B5  (1002.13 Hz)
+    1.65174455f,  // [36] C6  (1061.72 Hz)
+    1.61053456f,  // [37] C#6 (1124.86 Hz)
+    1.56464606f,  // [38] D6  (1191.74 Hz)
+    1.51359946f,  // [39] D#6 (1262.61 Hz)
+    1.45687977f,  // [40] E6  (1337.69 Hz)
+    1.39393793f,  // [41] F6  (1417.23 Hz)
+    1.32419364f,  // [42] F#6 (1501.50 Hz)
+    1.24704011f,  // [43] G6  (1590.79 Hz)
+    1.16185133f,  // [44] G#6 (1685.38 Hz)
+    1.06799261f,  // [45] A6  (1785.60 Hz)
+    0.96483504f,  // [46] A#6 (1891.78 Hz)
+    0.85177504f,  // [47] B6  (2004.27 Hz)
+};
+
+
 
 class FreqSampler : public codal::DataSink {
 public:
@@ -306,6 +377,7 @@ static float computeDC(const int16_t *samples) {
     return (float)sum / (float)BLOCK_SIZE;
 }
 
+
 // Returns power at note i for a block of BLOCK_SIZE samples with DC removed.
 float goertzelPower(float coeff, const int16_t *samples, float dc) {
     float s1 = 0.0f, s2 = 0.0f, s0;
@@ -332,6 +404,10 @@ int detectNote(const int16_t *samples, float dc, float threshold) {
     return best;
 }
 
+
+static float notePowers[NUM_NOTES];
+static int noteCents[NUM_NOTES];
+
 //%
 void dumpSamples() {
 #if MICROBIT_CODAL
@@ -343,35 +419,61 @@ void dumpSamples() {
     float dc = computeDC(sampler->buf);
     float maxPower = 0.0f;
     int maxIndex = -1;
-
+// Get time at start of computation
+    long startTime = uBit.systemTime();
+    float p0 = goertzelPower(goertzelCoeff_mid[0], sampler->buf, dc);
     for (int i = 0; i < NUM_NOTES; i++) {
-        // Normalize by N² so the result is always a manageable float
-        const float coeff = goertzelCoeff[i];
-        float p = goertzelPower(coeff, sampler->buf, dc);
-        if(p > maxPower) { maxPower = p; maxIndex = i; }
-        p=p / ((float)BLOCK_SIZE * BLOCK_SIZE);
-        // Instead of: uBit.serial.printf("%s %f\n", noteName[i], p);
-        int whole = (int)p;
-        int frac  = (int)((p - whole) * 1000);   // 3 decimal places
+        float p4 = goertzelPower(goertzelCoeff_mid[i+1], sampler->buf, dc);
+        float p[5] = {
+            p0,
+            goertzelPower(goertzelCoeff_lo1[i], sampler->buf, dc),  // -25¢
+            goertzelPower(goertzelCoeff[i],     sampler->buf, dc),  //   0¢
+            goertzelPower(goertzelCoeff_hi1[i], sampler->buf, dc),  // +25¢
+            p4,
+        };
+        p0 = p4;
+
+        float peak = 0.0f;
+        for (int k = 0; k < 5; k++) if (p[k] > peak) peak = p[k];
+
+        float total = p[0]+p[1]+p[2]+p[3]+p[4];
+        float x = (-2.0f*p[0] - 1.0f*p[1] + 0.0f*p[2] + 1.0f*p[3] + 2.0f*p[4]) / total;
+        int centsError = (int)(x * 1000.0f);
+        notePowers[i] = peak;
+        noteCents[i] = centsError;
+    }
+
+    long endTime = uBit.systemTime();
+    long elapsedTime = endTime - startTime;
+    uBit.serial.printf("Computation time: %d ms\n", (int)elapsedTime);
+
+    for(int i = 0; i < NUM_NOTES; i++) {
+        if(notePowers[i] > maxPower) { maxPower = notePowers[i]; maxIndex = i; }
+        float pNorm = notePowers[i] / ((float)BLOCK_SIZE * BLOCK_SIZE);
+        int whole = (int)pNorm;
+        int frac  = (int)((pNorm - whole) * 1000);   // 3 decimal places
         const char *pad = (frac < 10) ? "00" : (frac < 100) ? "0" : "";
-        uBit.serial.printf("%s=%d.%s%d\n", noteName[i], whole, pad, frac);
+        uBit.serial.printf("%s=%d.%s%d centsError %d\n", noteName[i], whole, pad, frac, noteCents[i]);
+        // Wait for the serial buffer to flush before starting the next line, to avoid interleaving output
+        uBit.sleep(100);
     }
     if(maxIndex >= 0) {
         uBit.serial.printf("Loudest note %s (power=%d)\n", noteName[maxIndex], (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)));
     } else {
         uBit.serial.printf("No note detected above threshold\n");
     }
-    maxPower = 0.0f;
-    int freqAtMaxPower = 0;
-    for(int freq = 120; freq <= 2000; freq += 10) {
-        float coeff = goertzelCoeffFor(freq);
-        float p = goertzelPower(coeff, sampler->buf, dc);
-        if(p > maxPower) {
-            maxPower = p;
-            freqAtMaxPower = freq;
-        }
-    }
-    uBit.serial.printf("Loudest frequency %d Hz (power=%d)\n", freqAtMaxPower, (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)));
+    // Print computation time
+    // maxPower = 0.0f;
+    // int freqAtMaxPower = 0;
+    // for(int freq = 120; freq <= 2000; freq += 10) {
+    //     float coeff = goertzelCoeffFor(freq);
+    //     float p = goertzelPower(coeff, sampler->buf, dc);
+    //     if(p > maxPower) {
+    //         maxPower = p;
+    //         freqAtMaxPower = freq;
+    //     }
+    // }
+    // uBit.serial.printf("Loudest frequency %d Hz (power=%d)\n", freqAtMaxPower, (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)));
 
     #else
     target_panic(PANIC_VARIANT_NOT_SUPPORTED);
