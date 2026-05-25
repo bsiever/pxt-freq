@@ -5,7 +5,6 @@ using namespace pxt;
 
 #if MICROBIT_CODAL
 
-
 namespace frequencies {
 
 static const int   NUM_NOTES  = 48;     // C3–B6
@@ -346,6 +345,7 @@ public:
 };
 
 static FreqSampler *sampler = nullptr;
+static float fbuf[BLOCK_SIZE];   // DC-removed float copy of the capture buffer
 
 } // namespace frequencies
 
@@ -378,27 +378,26 @@ static float computeDC(const int16_t *samples) {
 }
 
 
-// Returns power at note i for a block of BLOCK_SIZE samples with DC removed.
-float goertzelPower(float coeff, const int16_t *samples, float dc) {
+// Returns Goertzel power for a pre-processed (DC-removed) float buffer.
+float goertzelPower(float coeff, const float *samples) {
     float s1 = 0.0f, s2 = 0.0f, s0;
 
     for (int n = 0; n < BLOCK_SIZE; n++) {
-        s0 = ((float)samples[n] - dc) + coeff * s1 - s2;
+        s0 = samples[n] + coeff * s1 - s2;
         s2 = s1;
         s1 = s0;
     }
     return s1*s1 + s2*s2 - coeff*s1*s2;
 }
 
-// Detect the loudest note in a block; returns index (0=C3 … 47=B6), or -1 if
-// no note exceeds the threshold.
-int detectNote(const int16_t *samples, float dc, float threshold) {
+// Detect the loudest note; returns index (0=C3 … 47=B6), or -1 if none exceeds threshold.
+// Expects a DC-removed float buffer (build with computeDC + fbuf conversion first).
+int detectNote(const float *samples, float threshold) {
     int   best      = -1;
     float bestPower = threshold;
 
     for (int i = 0; i < NUM_NOTES; i++) {
-        const float coeff = goertzelCoeff[i];
-        float p = goertzelPower(coeff, samples, dc);
+        float p = goertzelPower(goertzelCoeff[i], samples);
         if (p > bestPower) { bestPower = p; best = i; }
     }
     return best;
@@ -417,21 +416,33 @@ void dumpSamples() {
         fiber_sleep(1);
 
     float dc = computeDC(sampler->buf);
-    float maxPower = 0.0f;
-    int maxIndex = -1;
-// Get time at start of computation
+    for (int n = 0; n < BLOCK_SIZE; n++)
+        fbuf[n] = (float)sampler->buf[n] - dc;
+
     long startTime = uBit.systemTime();
-    float p0 = goertzelPower(goertzelCoeff_mid[0], sampler->buf, dc);
+
+    float p0 = goertzelPower(goertzelCoeff_mid[0], fbuf);
     for (int i = 0; i < NUM_NOTES; i++) {
-        float p4 = goertzelPower(goertzelCoeff_mid[i+1], sampler->buf, dc);
+        const float c1 = goertzelCoeff_lo1[i];
+        const float c2 = goertzelCoeff[i];
+        const float c3 = goertzelCoeff_hi1[i];
+        const float c4 = goertzelCoeff_mid[i+1];
+        float s1a=0,s2a=0, s1b=0,s2b=0, s1c=0,s2c=0, s1d=0,s2d=0;
+        for (int n = 0; n < BLOCK_SIZE; n++) {
+            float samp = fbuf[n], t;
+            t = samp + c1*s1a - s2a;  s2a=s1a; s1a=t;
+            t = samp + c2*s1b - s2b;  s2b=s1b; s1b=t;
+            t = samp + c3*s1c - s2c;  s2c=s1c; s1c=t;
+            t = samp + c4*s1d - s2d;  s2d=s1d; s1d=t;
+        }
         float p[5] = {
             p0,
-            goertzelPower(goertzelCoeff_lo1[i], sampler->buf, dc),  // -25¢
-            goertzelPower(goertzelCoeff[i],     sampler->buf, dc),  //   0¢
-            goertzelPower(goertzelCoeff_hi1[i], sampler->buf, dc),  // +25¢
-            p4,
+            s1a*s1a + s2a*s2a - c1*s1a*s2a,  // -25¢
+            s1b*s1b + s2b*s2b - c2*s1b*s2b,  //   0¢
+            s1c*s1c + s2c*s2c - c3*s1c*s2c,  // +25¢
+            s1d*s1d + s2d*s2d - c4*s1d*s2d,  // +50¢
         };
-        p0 = p4;
+        p0 = p[4];
 
         float peak = 0.0f;
         for (int k = 0; k < 5; k++) if (p[k] > peak) peak = p[k];
@@ -446,9 +457,12 @@ void dumpSamples() {
     long endTime = uBit.systemTime();
     long elapsedTime = endTime - startTime;
     uBit.serial.printf("Computation time: %d ms\n", (int)elapsedTime);
+    float maxPower = 0.0f;
+    float centsAtMaxPower = 0.0f;
+    int maxIndex = -1;
 
     for(int i = 0; i < NUM_NOTES; i++) {
-        if(notePowers[i] > maxPower) { maxPower = notePowers[i]; maxIndex = i; }
+        if(notePowers[i] > maxPower) { maxPower = notePowers[i]; maxIndex = i;  centsAtMaxPower = noteCents[i]; }
         float pNorm = notePowers[i] / ((float)BLOCK_SIZE * BLOCK_SIZE);
         int whole = (int)pNorm;
         int frac  = (int)((pNorm - whole) * 1000);   // 3 decimal places
@@ -458,7 +472,7 @@ void dumpSamples() {
         uBit.sleep(100);
     }
     if(maxIndex >= 0) {
-        uBit.serial.printf("Loudest note %s (power=%d)\n", noteName[maxIndex], (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)));
+        uBit.serial.printf("Loudest note %s (power=%d; centsError=%d)\n", noteName[maxIndex], (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)), centsAtMaxPower);
     } else {
         uBit.serial.printf("No note detected above threshold\n");
     }

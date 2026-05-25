@@ -112,7 +112,7 @@ namespace frequencies {
     //% block="detected $change in $note"
     //% draggableParameters="reporter"
     //% weight=500
-    export function detectedChangeInNoteNote(handler: (note: Note, change: FrequencyChange) => void) {
+    export function detectedChangeInNote(handler: (note: Note, change: FrequencyChange) => void) {
         // Add handler to collection of note handlers
         setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
         noteHandlers.push(handler)
@@ -139,15 +139,4 @@ namespace frequencies {
 
     }
 
-    /**
-     */
-    //% block="dominant $frequency $magnitude"
-    //% draggableParameters="reporter"
-    //% advanced=true
-    //% weight=200
-    export function dominantFrequencyAndMagnitude(handler: (frequency: number, magnitude: number) => void) {
-        // Add handler to collection of dominant frequency handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        dominantFrequencyHandlers.push(handler)
-    } 
 }
