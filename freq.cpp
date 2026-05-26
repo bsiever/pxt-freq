@@ -397,7 +397,7 @@ static Action notesUpdatedAction = nullptr;
 
 
 static void processFiber() {
-    // NOTE: This only used the MAKECODE_NOTES
+    // NOTE: This only uses MAKECODE_NOTES
     while (true) {
         sampler->getData = true;
         while (!sampler->dataReady)

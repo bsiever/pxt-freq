@@ -10,11 +10,17 @@ frequencies.inititialize()
 // See if any notes have changed
 frequencies.startNote(function (note: Note, cents: number) {
     serial.writeLine("Started " + frequencies.noteToString(note) + " with cents " + cents)
+    // Convert note into a number from 0-24 and plot it on the LED display
+    let noteNumber = frequencies.getNoteIndex(note);
+    led.plot(noteNumber % 5, Math.floor(noteNumber / 5))
+
 })
 
 // See if any notes have changed
 frequencies.stopNote(function (note: Note, cents: number) {
     serial.writeLine("Stopped " + frequencies.noteToString(note) + " with cents " + cents)
+    let noteNumber = frequencies.getNoteIndex(note);
+    led.unplot(noteNumber % 5, Math.floor(noteNumber / 5))
 })
 
 // // See if any notes have changed
