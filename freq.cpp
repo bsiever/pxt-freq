@@ -8,6 +8,7 @@ using namespace pxt;
 namespace frequencies {
 
 static const int   NUM_NOTES  = 48;     // C3–B6
+static const int   MAKECODE_NOTES = 36;
 static const int   BLOCK_SIZE = 1559;   // ~140 ms at 11136 Hz
 static const float FS         = 11136.0f;
 
@@ -372,10 +373,6 @@ void setup() {
 #endif
 }
 
-// Returns 2*cos(2π*freq/FS) — the Goertzel recurrence coefficient for a given frequency.
-float goertzelCoeffFor(float freq) {
-    return 2.0f * cosf(2.0f * 3.14159265358979323846f * freq / FS);
-}
 
 // Returns Goertzel power for a pre-processed (DC-removed) float buffer.
 float goertzelPower(float coeff, const float *samples) {
@@ -389,18 +386,6 @@ float goertzelPower(float coeff, const float *samples) {
     return s1*s1 + s2*s2 - coeff*s1*s2;
 }
 
-// Detect the loudest note; returns index (0=C3 … 47=B6), or -1 if none exceeds threshold.
-// Expects a DC-removed float buffer.
-int detectNote(const float *samples, float threshold) {
-    int   best      = -1;
-    float bestPower = threshold;
-
-    for (int i = 0; i < NUM_NOTES; i++) {
-        float p = goertzelPower(goertzelCoeff[i], samples);
-        if (p > bestPower) { bestPower = p; best = i; }
-    }
-    return best;
-}
 
 
 static volatile bool resultsValid = false;
@@ -410,8 +395,9 @@ static float   avgNotePower = 0;
 static float   maxNotePower = 0;
 static Action notesUpdatedAction = nullptr;
 
-static int iteration = 0;
+
 static void processFiber() {
+    // NOTE: This only used the MAKECODE_NOTES
     while (true) {
         sampler->getData = true;
         while (!sampler->dataReady)
@@ -420,7 +406,7 @@ static void processFiber() {
         __asm__ volatile("" ::: "memory");
 
         float p0 = goertzelPower(goertzelCoeff_mid[0], fbuf);
-        for (int i = 0; i < NUM_NOTES; i++) {
+        for (int i = 0; i < MAKECODE_NOTES; i++) {
             const float c1 = goertzelCoeff_lo1[i];
             const float c2 = goertzelCoeff[i];
             const float c3 = goertzelCoeff_hi1[i];
@@ -450,61 +436,59 @@ static void processFiber() {
         }
         float sum = 0.0f;
         maxNotePower = 0;
-        for (int i = 0; i < NUM_NOTES; i++)  {
+        for (int i = 0; i < MAKECODE_NOTES; i++)  {
             sum += notePowers[i];
             if (notePowers[i] > maxNotePower) maxNotePower = notePowers[i];
         }
-        avgNotePower = sum / (float)NUM_NOTES;
+        avgNotePower = sum / (float)MAKECODE_NOTES;
         // / ((float)BLOCK_SIZE * BLOCK_SIZE) * 1000.0f);
 
         __asm__ volatile("" ::: "memory");
         resultsValid = true;
-        iteration++;
 
         if (notesUpdatedAction)
             pxt::runAction0(notesUpdatedAction);
     }
 }
 
-//%
-void dumpSamples() {
-#if MICROBIT_CODAL
-    setup();
-    while (!resultsValid)
-        fiber_sleep(5);
+// void dumpSamples() {
+// #if MICROBIT_CODAL
+//     setup();
+//     while (!resultsValid)
+//         fiber_sleep(5);
 
-    // Snapshot before printing: uBit.sleep() in the print loop yields to processFiber,
-    // which would overwrite notePowers/noteCents with a new batch mid-print.
-    float powers[NUM_NOTES];
-    int   cents[NUM_NOTES];
-    for (int i = 0; i < NUM_NOTES; i++) {
-        powers[i] = notePowers[i];
-        cents[i]  = noteCents[i];
-    }
+//     // Snapshot before printing: uBit.sleep() in the print loop yields to processFiber,
+//     // which would overwrite notePowers/noteCents with a new batch mid-print.
+//     float powers[NUM_NOTES];
+//     int   cents[NUM_NOTES];
+//     for (int i = 0; i < NUM_NOTES; i++) {
+//         powers[i] = notePowers[i];
+//         cents[i]  = noteCents[i];
+//     }
 
-    float maxPower = 0.0f;
-    float centsAtMaxPower = 0.0f;
-    int maxIndex = -1;
-    uBit.serial.printf("Iteration %d:\n", iteration);
-    for (int i = 0; i < NUM_NOTES; i++) {
-        if (powers[i] > maxPower) { maxPower = powers[i]; maxIndex = i; centsAtMaxPower = cents[i]; }
-        float pNorm = powers[i] / ((float)BLOCK_SIZE * BLOCK_SIZE);
-        int whole = (int)pNorm;
-        int frac  = (int)((pNorm - whole) * 1000);
-        const char *pad = (frac < 10) ? "00" : (frac < 100) ? "0" : "";
-        uBit.serial.printf("%s=%d.%s%d centsError %d\n", noteName[i], whole, pad, frac, cents[i]);
-        uBit.sleep(100);
-    }
-    if (maxIndex >= 0) {
-        uBit.serial.printf("Loudest note %s (power=%d; centsError=%d)\n",
-            noteName[maxIndex], (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)), (int)centsAtMaxPower);
-    } else {
-        uBit.serial.printf("No note detected above threshold\n");
-    }
-#else
-    target_panic(PANIC_VARIANT_NOT_SUPPORTED);
-#endif
-}
+//     float maxPower = 0.0f;
+//     float centsAtMaxPower = 0.0f;
+//     int maxIndex = -1;
+//     uBit.serial.printf("Iteration %d:\n", iteration);
+//     for (int i = 0; i < NUM_NOTES; i++) {
+//         if (powers[i] > maxPower) { maxPower = powers[i]; maxIndex = i; centsAtMaxPower = cents[i]; }
+//         float pNorm = powers[i] / ((float)BLOCK_SIZE * BLOCK_SIZE);
+//         int whole = (int)pNorm;
+//         int frac  = (int)((pNorm - whole) * 1000);
+//         const char *pad = (frac < 10) ? "00" : (frac < 100) ? "0" : "";
+//         uBit.serial.printf("%s=%d.%s%d centsError %d\n", noteName[i], whole, pad, frac, cents[i]);
+//         uBit.sleep(100);
+//     }
+//     if (maxIndex >= 0) {
+//         uBit.serial.printf("Loudest note %s (power=%d; centsError=%d)\n",
+//             noteName[maxIndex], (int)(maxPower / ((float)BLOCK_SIZE * BLOCK_SIZE)), (int)centsAtMaxPower);
+//     } else {
+//         uBit.serial.printf("No note detected above threshold\n");
+//     }
+// #else
+//     target_panic(PANIC_VARIANT_NOT_SUPPORTED);
+// #endif
+// }
 
 //%
 void onNotesUpdated(Action a) {
@@ -516,7 +500,7 @@ void onNotesUpdated(Action a) {
 //%
 int getNumNotes() {
 #if MICROBIT_CODAL
-    return NUM_NOTES;
+    return MAKECODE_NOTES;
 #else
     return 0;
 #endif
@@ -526,7 +510,7 @@ int getNumNotes() {
 //%
 float getNotePower(int i) {
 #if MICROBIT_CODAL
-    if (i < 0 || i >= NUM_NOTES) return 0;
+    if (i < 0 || i >= MAKECODE_NOTES) return 0;
     return notePowers[i];
 #else
     return 0;
@@ -550,7 +534,7 @@ float getMaxNotePower() {
 //%
 int getNoteCents(int i) {
 #if MICROBIT_CODAL
-    if (i < 0 || i >= NUM_NOTES) return 0;
+    if (i < 0 || i >= MAKECODE_NOTES) return 0;
     return noteCents[i];
 #else
     return 0;

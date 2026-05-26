@@ -1,9 +1,9 @@
 
     enum FrequencyChange {
-        //% block="start"
-        Start,
         //% block="starting",
         Starting,
+        //% block="start"
+        Playing,
         //% block="stop"
         Stop, 
         //% block="stopping"
@@ -31,35 +31,46 @@ namespace frequencies {
     ];
 
     // Array of note handlers that will be called when a note is detected as starting or stopping
-    let noteHandlers: ((note: Note, change: FrequencyChange, cents: number) => void)[] = [];
+    let noteStartHandlers: ((note: Note, cents: number) => void)[] = [];
+    let noteStopHandlers: ((note: Note, cents: number) => void)[] = [];
+    let notePlayingHandlers: ((note: Note, cents: number) => void)[] = [];
 
 
     /**
      */
-    //% block="detected $change in $note ($cents)"
+    //% block="started $note ($cents)"
     //% draggableParameters="reporter"
     //% weight=500
-    export function detectedChangeInNote(handler: (note: Note, change: FrequencyChange, cents: number) => void) {
-        serial.writeLine("Adding note handler");
+    export function startNote(handler: (note: Note, cents: number) => void) {
         // Add handler to collection of note handlers
         setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        noteHandlers.push(handler)
+        noteStartHandlers.push(handler)
     } 
 
-    //% block="set detection threshold to $threshold"
-    //% advanced=true
+    /**
+     */
+    //% block="stopped $note ($cents)"
+    //% draggableParameters="reporter"
     //% weight=500
-    export function setDetectionThreshold(threshold: number) {
-        0;
-    }
+    export function stopNote(handler: (note: Note, cents: number) => void) {
+        // Add handler to collection of note handlers
+        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        noteStopHandlers.push(handler)
+    } 
 
-    //% block
-    //% shim=frequencies::dumpSamples
-    //% advanced=true
-    //% weight=50
-    export function dumpSamples() {
-        0;
-    }
+
+    /**
+     */
+    //% block="playing $note ($cents)"
+    //% draggableParameters="reporter"
+    //% weight=500
+    export function playingNote(handler: (note: Note, cents: number) => void) {
+        // Add handler to collection of note handlers
+        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        notePlayingHandlers.push(handler)
+    } 
+
+
 
     // Array of notes mapping C++ index (0=C3 … B5) to Note enum values
     const note = [
@@ -154,22 +165,39 @@ namespace frequencies {
             let power = Math.abs(getNotePower(i));
             let cents = getNoteCents(i);
             // Show the average power 
-            if (power > threshold && noteStatus[i] === FrequencyChange.Stop) {
-                // Note has started since last time we checked
-                noteStatus[i] = FrequencyChange.Starting;
-            } else if (power > threshold && noteStatus[i] === FrequencyChange.Starting) {
-                // Note has started since last time we checked
-                noteStatus[i] = FrequencyChange.Start;
-                noteHandlers.forEach(h => h(note[i], FrequencyChange.Start, cents));
-            } else if (power <= threshold && noteStatus[i] === FrequencyChange.Start) {
-                // Note has stopped since last time we checked
-                noteStatus[i] = FrequencyChange.Stopping;
-            } else if (power <= threshold  && noteStatus[i] === FrequencyChange.Stopping) {
-                // Note has stopped since last time we checked
-                noteStatus[i] = FrequencyChange.Stop;
-                noteHandlers.forEach(h => h(note[i], FrequencyChange.Stop, cents));
+            if (power > threshold) {
+                switch (noteStatus[i]) {
+                    case FrequencyChange.Stop:
+                    case FrequencyChange.Stopping:
+                        // Note has started since last time we checked
+                        noteStatus[i] = FrequencyChange.Starting;
+                        break;
+                    case FrequencyChange.Starting:
+                        // Note has started since last time we checked
+                        noteStatus[i] = FrequencyChange.Playing;
+                        noteStartHandlers.forEach(h => h(note[i], cents));
+                        notePlayingHandlers.forEach(h => h(note[i], cents));
+                        break;
+                    case FrequencyChange.Playing:
+                        // Note is still playing since last time we checked
+                        noteStatus[i] = FrequencyChange.Playing;
+                        notePlayingHandlers.forEach(h => h(note[i], cents));
+                        break;
+                }
+            } else {
+                switch (noteStatus[i]) {
+                    case FrequencyChange.Playing:
+                        // Note has stopped since last time we checked
+                        noteStatus[i] = FrequencyChange.Stopping;
+                        break;
+                    case FrequencyChange.Stopping:
+                        // Note has stopped since last time we checked
+                        noteStatus[i] = FrequencyChange.Stop;
+                        noteStopHandlers.forEach(h => h(note[i], cents));
+                        break;
+                }
             }
-        }   
+        }
     }
 
     /** Returns the number of notes tracked (C3–B6 = 48). */

@@ -8,15 +8,24 @@ frequencies.inititialize()
 // })
 
 // See if any notes have changed
-frequencies.detectedChangeInNote(function (note: Note, change: FrequencyChange, cents: number) {
-    serial.writeLine("Average power " + frequencies.getAvgNotePower());
-    serial.writeLine("Note " + frequencies.noteToString(note) + " " + (change == FrequencyChange.Start ? "started" : "stopped") + " with cents " + cents)
+frequencies.startNote(function (note: Note, cents: number) {
+    serial.writeLine("Started " + frequencies.noteToString(note) + " with cents " + cents)
 })
+
+// See if any notes have changed
+frequencies.stopNote(function (note: Note, cents: number) {
+    serial.writeLine("Stopped " + frequencies.noteToString(note) + " with cents " + cents)
+})
+
+// // See if any notes have changed
+// frequencies.playingNote(function (note: Note, cents: number) {
+//     serial.writeLine("Playing " + frequencies.noteToString(note) + " with cents " + cents)
+// })
+
 
 input.onButtonPressed(Button.A, function () {
     // Enable microphone sampling 
 
     serial.writeLine("Sampling")
 
-    frequencies.dumpSamples()
 })
