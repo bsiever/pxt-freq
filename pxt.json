@@ -18,6 +18,7 @@
         "cmsis-dsp/arm_common_tables_q15.c",
         "cmsis-dsp/arm_const_structs_q15.c",
         "cmsis-dsp/arm_shift_q15.c",
+        "cmsis-dsp/LICENSE",
         "cmsis-dsp/arm_compiler_specific.h",
         "cmsis-dsp/cmsis_compiler.h",
         "cmsis-dsp/arm_math_types.h",
