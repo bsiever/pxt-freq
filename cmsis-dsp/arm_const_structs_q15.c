@@ -36,4 +36,8 @@ const arm_cfft_instance_q15 arm_cfft_sR_q15_len1024 ARM_DSP_TABLE_ATTRIBUTE = {
   1024, twiddleCoef_1024_q15, armBitRevIndexTable_fixed_1024, ARMBITREVINDEXTABLE_FIXED_1024_TABLE_LENGTH
 };
 
+const arm_cfft_instance_q15 arm_cfft_sR_q15_len2048 ARM_DSP_TABLE_ATTRIBUTE = {
+  2048, twiddleCoef_2048_q15, armBitRevIndexTable_fixed_2048, ARMBITREVINDEXTABLE_FIXED_2048_TABLE_LENGTH
+};
+
 #endif /* !defined(ARM_MATH_MVEI) */

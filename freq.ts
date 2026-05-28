@@ -151,14 +151,65 @@ namespace frequencies {
         // if maxPower > 5x average power, print out all notes that are >50% of max power
         let maxPower = getMaxNotePower();
         let avgPower = getAvgNotePower();
-        if (maxPower > 5 * avgPower && maxPower > 10000) {
-            for (let i = 0; i < getNumNotes(); i++) {
-                let power = getNotePower(i);
-                if (power > maxPower / 2) {
-                    serial.writeLine("Note " + noteToString(getNote(i)) + " is loud with power " + power + " and cents " + getNoteCents(i))
-                }
+
+        let threshold = maxPower;
+        if (maxPower > 8 * avgPower && maxPower > 8000) {
+            threshold = maxPower / 2;
+        } else {
+            // No notes playing
+            threshold = maxPower * 2; // minimum threshold to consider a note "on"
+        }
+        
+        // State machine to iterate through all notes and update the state and handlers)
+        for(let i = 0; i < getNumNotes(); i++) {
+            let power = getNotePower(i);
+            let cents = getNoteCents(i);
+            switch (noteStatus[i]) {
+                
+                case FrequencyChange.Stop:
+                    if (power > threshold) {
+                        noteStatus[i] = FrequencyChange.Starting;
+                    }
+                    break;
+
+                case FrequencyChange.Starting:
+                    if (power > threshold) {
+                        noteStatus[i] = FrequencyChange.Playing;
+                        noteStartHandlers.forEach(h => h(getNote(i), cents))
+                        notePlayingHandlers.forEach(h => h(getNote(i), cents))
+                    } else {
+                        noteStatus[i] = FrequencyChange.Stop;
+                    }
+                    break;
+
+                case FrequencyChange.Playing:
+                    if (power < threshold) {
+                        noteStatus[i] = FrequencyChange.Stopping;
+                    } else {
+                        notePlayingHandlers.forEach(h => h(getNote(i), cents))
+                    }
+                    break;
+
+                case FrequencyChange.Stopping:
+                    if (power < threshold) {
+                        noteStatus[i] = FrequencyChange.Stop;
+                        noteStopHandlers.forEach(h => h(getNote(i), cents))
+                    } else {
+                        noteStatus[i] = FrequencyChange.Playing;
+                        notePlayingHandlers.forEach(h => h(getNote(i), cents))
+                    }
+                    break;
             }
         }   
+
+        // if (maxPower > 5 * avgPower && maxPower > 10000) {
+        //     for (let i = 0; i < getNumNotes(); i++) {
+        //         let power = getNotePower(i);
+        //         if (power > maxPower / 2) {
+        //             serial.writeLine("Note " + noteToString(getNote(i)) + " is loud with power " + power + " and cents " + getNoteCents(i))
+        //         }
+        //     }
+        // }   
 
         // serial.writeLine("Max Power " + getMaxNotePower() + ", Avg Power  " + getAvgNotePower())
         // // Print out note name, not power, and cents for each note that has changed since the last update

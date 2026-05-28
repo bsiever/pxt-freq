@@ -9,7 +9,7 @@ using namespace pxt;
 namespace frequencies {
 
 static const int   NUM_NOTES  = 36;
-static const int   BLOCK_SIZE = 2048;
+static const int   BLOCK_SIZE = 4096;
 #define MAKECODE_NOTES NUM_NOTES
 
 static const float noteFreq[NUM_NOTES] = {
@@ -61,12 +61,12 @@ static const float noteFreq[NUM_NOTES] = {
 
 // Sample rate: CODAL rounds 11000 Hz request to 16 MHz / 1440 = 11111.1̄ Hz
 static const float SAMPLE_RATE = 11111.111f;
-static const float BIN_WIDTH   = SAMPLE_RATE / BLOCK_SIZE;  // ≈5.425 Hz/bin
+static const float BIN_WIDTH   = SAMPLE_RATE / BLOCK_SIZE;  // ≈2.713 Hz/bin
 
 // CMSIS-DSP Q15 real FFT state and buffers
 static arm_rfft_instance_q15 rfftInst;
 static q15_t fftIn[BLOCK_SIZE];           // q15 input (modified in-place by CFFT stage)
-static q15_t fftOut[BLOCK_SIZE * 2 + 2]; // complex output: 4 * (N/2) + 2 = 4098 elements
+static q15_t fftOut[BLOCK_SIZE * 2 + 2]; // complex output: 4 * (N/2) + 2 = 8194 elements
 
 // Per-note results written by processFiber, read by getters
 static float notePowers[NUM_NOTES];
@@ -140,7 +140,7 @@ void setup() {
     sampler->setup();
     uBit.audio.activateMic();
 #if MICROBIT_CODAL
-    arm_rfft_init_2048_q15(&rfftInst, 0, 1);
+    arm_rfft_init_4096_q15(&rfftInst, 0, 1);
     create_fiber(processFiber);
 #endif
 }
@@ -159,13 +159,13 @@ static void processFiber() {
         sampler->dataReady = false;
         __asm__ volatile("" ::: "memory");
 
-        // Compute 2048-point real FFT; fftIn is consumed/modified in-place
+        // Compute 4096-point real FFT; fftIn is consumed/modified in-place
         arm_rfft_q15(&rfftInst, fftIn, fftOut);
 
         // Compute per-note power and sub-bin cents offset.
-        // Q15 RFFT with N=2048 downscales by 11 bits internally (output in 12.4 format).
-        // Full-scale amplitude 32767 → peak bin magnitude ≈ 32767/2^11 ≈ 16 → power ≈ 256.
-        static const float FULL_SCALE_POW = 256.0f;
+        // Q15 RFFT with N=4096 downscales by 12 bits internally (output in 13.3 format).
+        // Full-scale amplitude 32767 → peak bin magnitude ≈ 32767/2^12 ≈ 8 → power ≈ 64.
+        static const float FULL_SCALE_POW = 64.0f;
         float totalPower = 0.0f;
         float curMax     = 0.0f;
 
