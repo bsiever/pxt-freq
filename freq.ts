@@ -71,7 +71,6 @@ namespace frequencies {
     } 
 
 
-
     // Array of notes mapping C++ index (0=C3 … B5) to Note enum values
     const notes = [
         Note.C3, Note.CSharp3, Note.D3, Note.Eb3, Note.E3, Note.F3,
@@ -80,16 +79,6 @@ namespace frequencies {
         Note.FSharp4, Note.G4, Note.GSharp4, Note.A4, Note.Bb4, Note.B4,
         Note.C5, Note.CSharp5, Note.D5, Note.Eb5, Note.E5, Note.F5,
         Note.FSharp5, Note.G5, Note.GSharp5, Note.A5, Note.Bb5, Note.B5
-    ];
-
-    // Array to convert Note enum values to note name strings for printing to the console
-    const noteNames = [
-        "C3", "C#3", "D3", "Eb3", "E3", "F3",
-        "F#3", "G3", "G#3", "A3", "Bb3", "B3",
-        "C4", "C#4", "D4", "Eb4", "E4", "F4",
-        "F#4", "G4", "G#4", "A4", "Bb4", "B4",
-        "C5", "C#5", "D5", "Eb5", "E5", "F5",
-        "F#5", "G5", "G#5", "A5", "Bb5", "B5"
     ];
 
     // Function to convert Note enum value to string
@@ -144,6 +133,7 @@ namespace frequencies {
     // Shim for onNotesUpdated - called by C++ when new results are available
     //% shim=frequencies::onNotesUpdated
     export function onNotesUpdated(handler: Action) {
+
     }
 
     /**
@@ -156,126 +146,39 @@ namespace frequencies {
     //% weight=100
     //% advanced=true
     export function doOnNotesUpdated() {
-        // pass 2 averages only the below-mean notes, which are predominantly noise filters.
-        let avg = getAvgNotePower();
-        let max = getMaxNotePower();
-        // If max is within 1 order of magnitude of avg, then we aren't reliably detecting notes, so ignore the avg filter to avoid false negatives. Otherwise, filter out notes that are below the avg threshold to reduce false positives.
-        let threshold = 0;
-        if (max / avg < 8 || max < 2000000) {
-            // No matching notes
-            threshold = max * 2;
-        } else {
-            threshold = max * 0.66;
-        }
-
-        // Iterate through each "Note" and determine if it has started or stopped since the last time we checked
-        for (let i = 0; i < notes.length; i++) {
-            let practicalThreshold = threshold;
-
-            // // IF This note and the next are both above the threshold, and one is a better pitch match than the other, ignore the one that is a worse pitch match unless it's significantly louder, to avoid false positives on adjacent notes.  This is a common issue with polyphonic pitch detection algorithms where energy can bleed into adjacent bins, causing multiple adjacent notes to appear above the threshold when only one is actually present.  By comparing adjacent bins against each other, we can often identify which one is the true positive and which one is the false positive, and filter out the false positive to improve accuracy.
-            // let thisPower = getNotePower(i);
-            // let thisCents = getNoteCents(i);
-            // if (i < notes.length - 1) {
-            //     let nextPower = getNotePower(i + 1);
-            //     let nextCents = getNoteCents(i + 1);
-            //     if (thisPower > threshold &&
-            //         nextPower > threshold &&
-            //         ((thisCents >  800 && nextCents < 150) || (thisCents < 150 && nextCents > 800)) &&
-            //         Math.abs(thisCents) + Math.abs(nextCents) > 600) {
-            //         // one of the two notes is likely a false positive, so ignore the one that is a worse pitch match unless it's significantly louder, to avoid false positives on adjacent notes.         
-            //         if (thisPower < nextPower * 1.5) {
-            //             practicalThreshold = 2*thisPower; // effectively ignore this note unless it's very loud, to avoid false positives
-            //         }
-            //     }
-            // }
-            // // If the previous note matched with the above criteria, skip this one
-            // if (i > 0) {
-            //     let prevPower = getNotePower(i - 1);
-            //     let prevCents = getNoteCents(i - 1);
-            //     if (thisPower > threshold &&
-            //         prevPower > threshold &&
-            //         ((thisCents >  800 && prevCents < 150) || (thisCents < 150 && prevCents > 800)) &&
-            //         Math.abs(thisCents) + Math.abs(prevCents) > 600) {
-            //         // one of the two notes is likely a false positive, so ignore the one that is a worse pitch match unless it's significantly louder, to avoid false positives on adjacent notes.         
-            //         if (thisPower < prevPower * 1.5) {
-            //             practicalThreshold = 2*thisPower; // effectively ignore this note unless it's very loud, to avoid false positives on adjacent notes.         
-            //         }
-            //     }
-            // }
-
-            // Compare to next note up: If they both are above the threshold, this one is has a positive cents and the next has a negative cents, one is likely a false positive.  If this has the smaller magnitude "cents", assume this is _not_ above the threshold (temp threshold)
-            // (and the delta in max and min cents is >600)
-            // if (i < notes.length - 1) {
-            //     let nextPower = getNotePower(i + 1);
-            //     if (getNotePower(i) > threshold &&
-            //         nextPower > threshold &&
-            //         getNoteCents(i) >  800 &&  getNoteCents(i + 1) < 150) {
-            //         // next note is likely a better match, so ignore this one unless it's well above the threshold
-            //         if (getNotePower(i) < threshold * 1.5) {
-            //             practicalThreshold = 2*max; // effectively ignore this note unless it's very loud, to avoid false positives
-            //         }
-            //     }
-            // }
-            // // If the previous note matched with the above criteria, skip this one
-            // if (i > 0) {
-            //     let prevPower = getNotePower(i - 1);
-            //     if (getNotePower(i) > threshold &&
-            //         prevPower > threshold &&
-            //         getNoteCents(i) <  150 &&  getNoteCents(i - 1) > 800 &&
-            //         Math.abs(getNoteCents(i)) + Math.abs(getNoteCents(i - 1)) > 600) {
-            //         // prev note is likely a better match, so ignore this one unless it's well above the threshold
-            //         if (getNotePower(i) < threshold * 1.5) {
-            //             practicalThreshold = 2*max; // effectively ignore this note unless it's very loud, to avoid false positives
-            //         }
-            //     }
-            // }   
-
-
-            let power = Math.abs(getNotePower(i));
-            let cents = getNoteCents(i);
-            // Show the average power 
-            if (power > practicalThreshold) {
-                switch (noteStatus[i]) {
-                    case FrequencyChange.Stop:
-                        // Note has started since last time we checked
-                        noteStatus[i] = FrequencyChange.Starting;
-                        break;
-                    case FrequencyChange.Stopping:
-                        // Note has started since last time we checked
-                        notePlayingHandlers.forEach(h => h(notes[i], cents));
-                        noteStatus[i] = FrequencyChange.Playing;
-                        break;
-                    case FrequencyChange.Starting:
-                        // Note has started since last time we checked
-                        noteStatus[i] = FrequencyChange.Playing;
-                        noteStartHandlers.forEach(h => h(notes[i], cents));
-                        notePlayingHandlers.forEach(h => h(notes[i], cents));
-                        break;
-                    case FrequencyChange.Playing:
-                        // Note is still playing since last time we checked
-                        notePlayingHandlers.forEach(h => h(notes[i], cents));
-                        break;
-                }
-            } else {
-                switch (noteStatus[i]) {
-                    case FrequencyChange.Playing:
-                        // Note has stopped since last time we checked
-                        noteStatus[i] = FrequencyChange.Stopping;
-                        break;
-                    case FrequencyChange.Starting:
-                        // Note has stopped since last time we checked
-                        noteStatus[i] = FrequencyChange.Stop;
-                        break;
-                    case FrequencyChange.Stopping:
-                        // Note has stopped since last time we checked
-                        noteStatus[i] = FrequencyChange.Stop;
-                        noteStopHandlers.forEach(h => h(notes[i], cents));
-                        break;
-                    case FrequencyChange.Stop:
-                        break;
+        // Print max power , average power
+        
+        // if maxPower > 5x average power, print out all notes that are >50% of max power
+        let maxPower = getMaxNotePower();
+        let avgPower = getAvgNotePower();
+        if (maxPower > 5 * avgPower && maxPower > 10000) {
+            for (let i = 0; i < getNumNotes(); i++) {
+                let power = getNotePower(i);
+                if (power > maxPower / 2) {
+                    serial.writeLine("Note " + noteToString(getNote(i)) + " is loud with power " + power + " and cents " + getNoteCents(i))
                 }
             }
-        }
+        }   
+
+        // serial.writeLine("Max Power " + getMaxNotePower() + ", Avg Power  " + getAvgNotePower())
+        // // Print out note name, not power, and cents for each note that has changed since the last update
+        // for (let i = 0; i < getNumNotes(); i++) {
+        //     // Print out the note name, note power, note cents
+        //     serial.writeLine("Note " + noteToString(getNote(i)) + " = " + getNotePower(i) + " power, " + getNoteCents(i) + " cents")
+        //     pause(100)
+        // }   
+        // // Print all bin values too
+        // for(let i = 0; i < 2048 / 2; i++) {
+        //     serial.writeLine("Bin " + i + " = " + getBin(i))
+        // }
+
+    }
+
+
+    // Shim for fft bin access 
+    //% shim=frequencies::getBin
+    export function getBin(_binIndex: number): number {
+        return 0;
     }
 
     /** Returns the number of notes tracked (C3–B6 = 48). */
