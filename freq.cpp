@@ -200,9 +200,34 @@ static void processFiber() {
             float normPow  = p1 / FULL_SCALE_POW * 1000.0f;
             //if (normPow > 1000.0f) normPow = 1000.0f;
             notePowers[n]  = normPow;
+        }
 
-            totalPower += normPow;
-            if (normPow > curMax) curMax = normPow;
+        // Harmonic suppression: for each note, subtract its expected contribution from
+        // higher notes whose frequencies fall near its overtones (harmonics 2–6).
+        // Processed low-to-high so cascade suppression (harmonic-of-a-harmonic) is automatic.
+        // Power model: harmonic h has expected power ≈ P_fund / h².
+        for (int fund = 0; fund < NUM_NOTES; fund++) {
+            float fp = notePowers[fund];
+            if (fp < 1.0f) continue;
+            for (int h = 2; h <= 6; h++) {
+                float hFreq = (float)h * noteFreq[fund];
+                int   best  = -1;
+                float bestD = 1e9f;
+                for (int j = fund + 1; j < NUM_NOTES; j++) {
+                    float d = fabsf(1200.0f * log2f(noteFreq[j] / hFreq));
+                    if (d < bestD) { bestD = d; best = j; }
+                    else if (noteFreq[j] > hFreq) break;
+                }
+                if (best >= 0 && bestD < 50.0f) {
+                    float sub = fp / (float)(h * h) * 0.8f;
+                    notePowers[best] = fmaxf(0.0f, notePowers[best] - sub);
+                }
+            }
+        }
+
+        for (int n = 0; n < NUM_NOTES; n++) {
+            totalPower += notePowers[n];
+            if (notePowers[n] > curMax) curMax = notePowers[n];
         }
 
         avgBinPower = totalPower / NUM_NOTES;

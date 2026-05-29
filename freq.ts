@@ -30,11 +30,14 @@ namespace frequencies {
         FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
     ];
 
+
     // Array of note handlers that will be called when a note is detected as starting or stopping
     let noteStartHandlers: ((note: Note, cents: number) => void)[] = [];
     let noteStopHandlers: ((note: Note, cents: number) => void)[] = [];
     let notePlayingHandlers: ((note: Note, cents: number) => void)[] = [];
 
+    // Note watch handlers are a combination of a note (to filter for) and a handler that is called with the power and cents for that note each time it is updated
+    let noteWatchHandlers: [Note, (note: Note, power: number, cents: number) => void][] = [];
 
     /**
      */
@@ -68,6 +71,17 @@ namespace frequencies {
         // Add handler to collection of note handlers
         setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
         notePlayingHandlers.push(handler)
+    } 
+
+    /**
+     */
+    //% block="watch $note ($note, $power, $cents)"
+    //% draggableParameters="reporter"
+    //% weight=700
+    export function watchNote(note: Note, handler: (theNote: Note, power: number, cents: number) => void) {
+        // Add handler to collection of note handlers
+        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        noteWatchHandlers.push([note, handler])
     } 
 
 
@@ -159,7 +173,13 @@ namespace frequencies {
             // No notes playing
             threshold = maxPower * 2; // minimum threshold to consider a note "on"
         }
-        
+
+        for (let item of noteWatchHandlers) {
+            let [note, handler] = item;
+            let noteIndex = getNoteIndex(note);
+            handler(note, getNotePower(noteIndex), getNoteCents(noteIndex))
+        }   
+
         // State machine to iterate through all notes and update the state and handlers)
         for(let i = 0; i < getNumNotes(); i++) {
             let power = getNotePower(i);
