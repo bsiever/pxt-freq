@@ -1,8 +1,8 @@
+# Frequency Detection
+
 ```package
 morse=github:bsiever/pxt-freq
 ```
-
-# Frequency Detection
 
 Detects musical notes in real time using the micro:bit v2's built-in microphone. Identifies notes
 C3 through B5 (3 octaves, 36 notes) and reports when they start, stop, or are sustained.
@@ -18,15 +18,9 @@ C3 through B5 (3 octaves, 36 notes) and reports when they start, stop, or are su
 frequencies.startNote(function (note, cents) {})
 ```
 
-Runs the handler once each time a new note is detected as playing. Use this to react to the
-beginning of a note.
-
-**Parameters**
-
-- **note** — the detected `Note` (e.g. `Note.A4`)
-- **cents** — pitch deviation from the exact note frequency; divide by 40 to get cents (−50 to +50)
-
-**Example** — display the note name when any note starts:
+Runs the handler once each time a new note is detected as playing. The handler receives
+**note** (the detected `Note`, e.g. `Note.A4`) and **cents** (raw pitch deviation; divide by 40
+to get cents in the range −50 to +50, where positive = sharp, negative = flat).
 
 ```blocks
 frequencies.startNote(function (note, cents) {
@@ -42,15 +36,9 @@ frequencies.startNote(function (note, cents) {
 frequencies.stopNote(function (note, cents) {})
 ```
 
-Runs the handler once each time a note is no longer detected. Pairs with `startNote` to track
-note on/off events.
-
-**Parameters**
-
-- **note** — the `Note` that stopped
-- **cents** — last known pitch deviation (divide by 40 for cents)
-
-**Example** — clear the display when any note stops:
+Runs the handler once each time a note stops being detected. Pairs with `startNote` to track
+note on/off events. The handler receives **note** (the `Note` that stopped) and **cents** (last
+known pitch deviation; divide by 40 for cents).
 
 ```blocks
 frequencies.stopNote(function (note, cents) {
@@ -67,14 +55,9 @@ frequencies.playingNote(function (note, cents) {})
 ```
 
 Runs the handler every detection cycle (~every 0.37 s) while a note remains active. Use this to
-continuously track pitch or update a display while a note is sustained.
-
-**Parameters**
-
-- **note** — the `Note` currently playing
-- **cents** — current pitch deviation (divide by 40 for cents)
-
-**Example** — show whether the note is sharp or flat while playing:
+continuously track pitch or update a display while a note is sustained. The handler receives
+**note** (the `Note` currently playing) and **cents** (current pitch deviation; divide by 40 for
+cents).
 
 ```blocks
 frequencies.playingNote(function (note, cents) {
@@ -97,43 +80,23 @@ frequencies.watchNote(Note.A4, function (theNote, power, cents) {})
 ```
 
 Runs the handler every detection cycle for one specific note, reporting its raw power and pitch
-deviation regardless of whether the note is considered "playing." Useful for building tuning
+deviation regardless of whether the note crosses the "playing" threshold. Useful for tuning
 meters or monitoring the strength of a particular pitch at all times.
 
-**Parameters**
-
-- **note** — the specific `Note` to monitor (chosen from the dropdown)
-- **theNote** — the `Note` being monitored (same as the input)
-- **power** — normalized power for this note, 0 (silence) to 1000 (full scale)
-- **cents** — pitch deviation (divide by 40 for cents, −50 to +50)
-
-**Example** — LED tuning meter for A4:
+The handler receives **theNote** (the `Note` being monitored), **power** (normalized power,
+0 = silence to 1000 = full scale), and **cents** (pitch deviation; divide by 40 for cents,
+−50 to +50).
 
 ```blocks
 frequencies.watchNote(Note.A4, function (theNote, power, cents) {
     if (power > 500) {
         let deviation = cents / 40
         if (deviation < -20) {
-            basic.showLeds(`
-                . . . . .
-                . . . . .
-                . # . . .
-                . . . . .
-                . . . . .`)
+            basic.showArrow(ArrowNames.West)
         } else if (deviation > 20) {
-            basic.showLeds(`
-                . . . . .
-                . . . . .
-                . . . # .
-                . . . . .
-                . . . . .`)
+            basic.showArrow(ArrowNames.East)
         } else {
-            basic.showLeds(`
-                . . . . .
-                . . . . .
-                . . # . .
-                . . . . .
-                . . . . .`)
+            basic.showIcon(IconNames.Yes)
         }
     }
 })
@@ -143,8 +106,7 @@ frequencies.watchNote(Note.A4, function (theNote, power, cents) {
 
 ## Advanced blocks
 
-These blocks expose the raw FFT results and are intended for custom detection logic or
-debugging. They are available under the **Advanced** section in the block editor.
+These expose the raw FFT results for custom detection logic or debugging.
 
 ### ``getNotePower(noteIndex)``
 
@@ -152,9 +114,8 @@ debugging. They are available under the **Advanced** section in the block editor
 frequencies.getNotePower(0)
 ```
 
-Returns the normalized power for note index `noteIndex` (0 = C3, 35 = B5), scaled 0–1000.
-After harmonic suppression has been applied. A value near 0 means silence at that pitch; 1000
-means full-scale input.
+Returns the normalized power for note index `noteIndex` (0 = C3, 35 = B5), scaled 0–1000,
+after harmonic suppression. Near 0 means silence; 1000 means full-scale input.
 
 ### ``getNoteCents(noteIndex)``
 
@@ -162,7 +123,7 @@ means full-scale input.
 frequencies.getNoteCents(0)
 ```
 
-Returns the raw pitch deviation for note at `noteIndex`. Divide by 40 to convert to cents
+Returns the raw pitch deviation for the note at `noteIndex`. Divide by 40 to convert to cents
 (range: −50 to +50). Positive = sharp, negative = flat.
 
 ### ``getAvgNotePower()``
@@ -181,7 +142,7 @@ frequencies.getMaxNotePower()
 ```
 
 Returns the highest normalized power among all 36 notes. The internal detection logic uses this
-to set the threshold for "note on" decisions.
+to set the threshold for note-on decisions.
 
 ### ``getNumNotes()``
 
@@ -197,9 +158,8 @@ Returns 36 — the number of notes tracked (C3 through B5).
 frequencies.getBin(0)
 ```
 
-Returns the raw squared magnitude of FFT bin `binIndex` (0–2047). Each bin represents a
-frequency range of ~2.71 Hz. Bin 0 is DC; bin 2047 is ~5556 Hz. Use this to inspect the full
-spectrum for debugging.
+Returns the raw squared magnitude of FFT bin `binIndex` (0–2047). Each bin spans ~2.71 Hz.
+Bin 0 is DC; bin 2047 is ~5556 Hz. Use this to inspect the full spectrum for debugging.
 
 ### ``on notes updated`` (advanced callback)
 
@@ -207,8 +167,8 @@ spectrum for debugging.
 frequencies.doOnNotesUpdated()
 ```
 
-Registers a handler that is called once per FFT frame (~every 0.37 s) with the results of the
-latest detection. Inside this handler you can call `getNotePower(i)`, `getNoteCents(i)`,
+Registers a handler called once per FFT frame (~every 0.37 s) with the latest detection
+results. Inside this handler you can call `getNotePower(i)`, `getNoteCents(i)`,
 `getAvgNotePower()`, and `getMaxNotePower()` to build completely custom detection logic.
 
 ### ``noteToString(note)``
@@ -223,14 +183,14 @@ Converts a `Note` enum value to a human-readable string such as `"A4"`, `"C#3"`,
 
 ## Detection range and accuracy
 
-| Property | Value |
-|----------|-------|
-| Notes detected | C3 – B5 (36 notes, 3 octaves) |
-| Sample rate | ~11,111 Hz |
-| FFT size | 4096 points |
-| Frequency resolution | ~2.71 Hz per bin |
-| Detection latency | ~0.37 s per frame |
-| Pitch resolution | ±50 cents (reported in units of 1/40 cent) |
+| Property              | Value                         |
+| --------------------- | ----------------------------- |
+| Notes detected        | C3 – B5 (36 notes, 3 octaves) |
+| Sample rate           | ~11,111 Hz                    |
+| FFT size              | 4096 points                   |
+| Frequency resolution  | ~2.71 Hz per bin              |
+| Detection latency     | ~0.37 s per frame             |
+| Pitch resolution      | ±50 cents (reported × 40)     |
 
 ### Tips for best results
 
@@ -238,10 +198,10 @@ Converts a `Note` enum value to a human-readable string such as `"A4"`, `"C#3"`,
   reduces signal level significantly.
 - **Single sustained notes work best.** Detection is designed around one note at a time.
   Chord detection is approximate.
-- **Lower octave notes (C3–B3) are harder to detect** because the microphone sensitivity
-  drops at low frequencies and piano overtones are often stronger than the fundamental.
-- **Minimize background noise.** The threshold is relative to the loudest frequency present,
-  so broadband noise raises the floor for all notes.
+- **Lower octave notes (C3–B3) are harder to detect** because microphone sensitivity drops
+  at low frequencies and piano overtones are often stronger than the fundamental.
+- **Minimize background noise.** The detection threshold is relative to the loudest frequency
+  present, so broadband noise raises the floor for all notes.
 
 ### How detection works
 
@@ -260,7 +220,7 @@ Each frame, the extension:
 
 ---
 
-# Acknowledgements
+## Acknowledgements
 
 Icon based on [Font Awesome icon 0xF001](https://www.iconfinder.com/search?q=f001) SVG.
 
@@ -269,7 +229,7 @@ CMSIS-DSP library (Q15 FFT implementation) copyright ARM Limited, licensed under
 
 ---
 
-# Support
+## Support
 
 I develop micro:bit extensions in my spare time to support activities I'm enthusiastic about,
 like summer camps and science curricula. You are welcome to become a sponsor of my micro:bit
@@ -277,7 +237,7 @@ work (one time or recurring payments), which helps offset equipment costs:
 [github.com/sponsors/bsiever](https://github.com/sponsors/bsiever). Any support at all is
 greatly appreciated!
 
-## Supported targets
+### Supported targets
 
 for PXT/microbit (v2 only)
 
