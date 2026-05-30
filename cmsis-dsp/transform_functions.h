@@ -30,11 +30,11 @@
 #include "arm_math_types.h"
 #include "arm_math_memory.h"
 
-#include "dsp/none.h"
-#include "dsp/utils.h"
+#include "none.h"
+#include "utils.h"
 
-#include "dsp/basic_math_functions.h"
-#include "dsp/complex_math_functions.h"
+#include "basic_math_functions.h"
+#include "complex_math_functions.h"
 
 // Only available for Neon versions of the FFTs
 // otherwise only powers of 2 are supported

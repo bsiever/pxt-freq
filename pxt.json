@@ -25,12 +25,12 @@
         "cmsis-dsp/arm_math_memory.h",
         "cmsis-dsp/arm_common_tables.h",
         "cmsis-dsp/arm_const_structs.h",
-        "cmsis-dsp/dsp/transform_functions.h",
-        "cmsis-dsp/dsp/none.h",
-        "cmsis-dsp/dsp/utils.h",
-        "cmsis-dsp/dsp/basic_math_functions.h",
-        "cmsis-dsp/dsp/complex_math_functions.h",
-        "cmsis-dsp/dsp/fast_math_functions.h"
+        "cmsis-dsp/transform_functions.h",
+        "cmsis-dsp/none.h",
+        "cmsis-dsp/utils.h",
+        "cmsis-dsp/basic_math_functions.h",
+        "cmsis-dsp/complex_math_functions.h",
+        "cmsis-dsp/fast_math_functions.h"
     ],
     "testFiles": [
         "test.ts"

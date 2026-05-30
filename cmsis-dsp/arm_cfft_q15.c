@@ -29,7 +29,7 @@
 #include "arm_compiler_specific.h"
 
 
-#include "dsp/transform_functions.h"
+#include "transform_functions.h"
 
 #if defined(ARM_MATH_MVEI) && !defined(ARM_MATH_AUTOVECTORIZE)
 

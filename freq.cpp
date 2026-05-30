@@ -1,6 +1,6 @@
 #include "pxt.h"
 #include "MicroBit.h"
-#include "dsp/transform_functions.h"
+#include "transform_functions.h"
 
 using namespace pxt;
 

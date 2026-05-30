@@ -30,7 +30,7 @@
 #include "arm_compiler_specific.h"
 
 
-#include "dsp/transform_functions.h"
+#include "transform_functions.h"
 
 
 ARM_DSP_ATTRIBUTE void arm_radix4_butterfly_q15(

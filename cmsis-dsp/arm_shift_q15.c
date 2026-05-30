@@ -29,7 +29,7 @@
 #include "arm_compiler_specific.h"
 
 
-#include "dsp/basic_math_functions.h"
+#include "basic_math_functions.h"
 
 /**
   @ingroup groupMath

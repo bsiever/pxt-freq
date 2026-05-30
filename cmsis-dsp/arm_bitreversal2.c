@@ -26,7 +26,7 @@
  * limitations under the License.
  */
 
-#include "dsp/transform_functions.h"
+#include "transform_functions.h"
 #include "arm_common_tables.h"
 
 void arm_bitreversal_64(
