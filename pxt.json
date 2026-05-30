@@ -37,7 +37,7 @@
     ],
     "public": true,
     "targetVersions": {
-        "target": "8.1.17",
+        "target": "8.1.19",
         "targetId": "microbit"
     },
     "supportedTargets": [

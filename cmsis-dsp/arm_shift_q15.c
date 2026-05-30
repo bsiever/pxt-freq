@@ -1,4 +1,4 @@
-﻿/* ----------------------------------------------------------------------
+/* ----------------------------------------------------------------------
  * Project:      CMSIS DSP Library
  * Title:        arm_shift_q15.c
  * Description:  Shifts the elements of a Q15 vector by a specified number of bits

@@ -1,4 +1,4 @@
-﻿/* ----------------------------------------------------------------------
+/* ----------------------------------------------------------------------
  * Project:      CMSIS DSP Library
  * Title:        arm_cfft_radix4_q15.c
  * Description:  This file has function definition of Radix-4 FFT & IFFT function and
