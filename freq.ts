@@ -95,8 +95,22 @@ namespace frequencies {
         Note.FSharp5, Note.G5, Note.GSharp5, Note.A5, Note.Bb5, Note.B5
     ];
 
+
+    // //% shim=ENUM_GET
+    // //% blockId=note_enum_shim
+    // //% block="Note $arg"
+    // //% enumName="Notes"
+    // //% enumMemberName="note"
+    // //% enumPromptHint="e.g. C4, CSharp4, ..."
+    // //% enumInitialMembers="C4"
+    // export function _noteEnumShim(arg: number) {
+    //     // This function should do nothing, but must take in a single
+    //     // argument of type number and return a number value.
+    //     return arg;
+    // }
+
     // Function to convert Note enum value to string
-    //% block="note $note to string"
+    //% block="note to string"
     export function noteToString(note: Note): string {
         // Switch statement to convert Note enum value to string
         switch (note) {
