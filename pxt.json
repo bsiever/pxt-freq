@@ -77,7 +77,7 @@
         "imageUrl": "file:../icon.png",
         "feedbackUrl": "http://siever.info"
     },
-    "explicitExcludes": [
+    "disablesVariants": [
         "mbdal"
     ]
 }
