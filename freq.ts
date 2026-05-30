@@ -96,6 +96,7 @@ namespace frequencies {
     ];
 
     // Function to convert Note enum value to string
+    //% block="note $note to string"
     export function noteToString(note: Note): string {
         // Switch statement to convert Note enum value to string
         switch (note) {
@@ -155,11 +156,7 @@ namespace frequencies {
      * avgPower is the mean normalized power across all notes, scaled by 1000.
      * Use getNotePower(i) and getNoteCents(i) inside the handler to read per-note results.
      */
-    //% block="on notes updated (avgPower $avgPower)"
-    //% draggableParameters="reporter"
-    //% weight=100
-    //% advanced=true
-    export function doOnNotesUpdated() {
+     function doOnNotesUpdated() {
         // Print max power , average power
         
         // if maxPower > 5x average power, print out all notes that are >50% of max power
