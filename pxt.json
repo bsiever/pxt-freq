@@ -23,6 +23,8 @@
         "cmsis-dsp/cmsis_compiler.h",
         "cmsis-dsp/arm_math_types.h",
         "cmsis-dsp/arm_math_memory.h",
+        "cmsis-dsp/dsp/arm_math_types.h",
+        "cmsis-dsp/dsp/arm_math_memory.h",
         "cmsis-dsp/arm_common_tables.h",
         "cmsis-dsp/arm_const_structs.h",
         "cmsis-dsp/dsp/transform_functions.h",
