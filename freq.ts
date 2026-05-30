@@ -75,7 +75,7 @@ namespace frequencies {
 
     /**
      */
-    //% block="watch $note ($note, $power, $cents)"
+    //% block="watch $note ($theNote, $power, $cents)"
     //% draggableParameters="reporter"
     //% weight=700
     export function watchNote(note: Note, handler: (theNote: Note, power: number, cents: number) => void) {
