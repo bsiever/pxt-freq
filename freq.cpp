@@ -1,9 +1,7 @@
 #include "pxt.h"
 #include "MicroBit.h"
 
-#if MICROBIT_CODAL
 #include "dsp/transform_functions.h"
-#endif
 
 using namespace pxt;
 
@@ -59,8 +57,11 @@ static const float noteFreq[NUM_NOTES] = {
 // Sample rate: CODAL rounds 11000 Hz request to 16 MHz / 1440 = 11111.1̄ Hz
 static const float SAMPLE_RATE = 11111.111f;
 static const float BIN_WIDTH   = SAMPLE_RATE / BLOCK_SIZE;  // ≈2.713 Hz/bin
-static float   avgBinPower = 0;
+static float   avgNotePower = 0;
+static float   maxNotePower = 0;
+
 static float   maxBinPower = 0;
+static int    maxBinIndex = 0;
 static Action notesUpdatedAction = nullptr;
 
 // CMSIS-DSP Q15 real FFT state and buffers
@@ -72,7 +73,6 @@ static q15_t fftOut[BLOCK_SIZE * 2 + 2]; // complex output: 4 * (N/2) + 2 = 8194
 static float notePowers[NUM_NOTES];
 static int   noteCents[NUM_NOTES];
 
-#if MICROBIT_CODAL
 
 class FreqSampler : public codal::DataSink {
 public:
@@ -127,24 +127,20 @@ public:
 
 static FreqSampler *sampler = nullptr;
 
-#endif // MICROBIT_CODAL
 
 //% advanced=true
 void setup() {
-#if MICROBIT_CODAL
     if (sampler) return;
     sampler = new FreqSampler();
     sampler->setup();
     uBit.audio.activateMic();
     arm_rfft_init_4096_q15(&rfftInst, 0, 1);
     create_fiber(processFiber);
-#endif
 }
 
 
 
 static void processFiber() {
-#if MICROBIT_CODAL
     // NOTE: This only uses MAKECODE_NOTES
     while (true) {
         sampler->getData = true;
@@ -223,14 +219,25 @@ static void processFiber() {
             totalPower += notePowers[n];
             if (notePowers[n] > curMax) curMax = notePowers[n];
         }
+        maxNotePower = curMax;
+        avgNotePower = totalPower / NUM_NOTES;
 
-        avgBinPower = totalPower / NUM_NOTES;
-        maxBinPower = curMax;
+        float maxPower = 0;
+        int maxIndex = 0;
+        // Find bin with max power
+        for (int i = 0;i< BLOCK_SIZE / 2; i++) {
+            float p = ((float)fftOut[2 * i] * (float)fftOut[2 * i] + (float)fftOut[2 * i + 1] * (float)fftOut[2 * i + 1]);
+            if(p > maxPower) {
+                maxPower = p;
+                maxIndex = i;
+            }
+        }
+        maxBinPower = maxPower;
+        maxBinIndex = maxIndex;
 
-        if (notesUpdatedAction) 
+        if (notesUpdatedAction)
             pxt::runAction0(notesUpdatedAction);
     }
-#endif
 }
 
 
@@ -244,55 +251,55 @@ void onNotesUpdated(Action a) {
 
 //%
 int getNumNotes() {
-#if MICROBIT_CODAL
     return MAKECODE_NOTES;
-#else
-    return 0;
-#endif
 }
 
 // Returns normalized power for note i, scaled by 1000 (i.e. 1000 = full-scale).
 //%
 float getNotePower(int i) {
-#if MICROBIT_CODAL
     if (i < 0 || i >= MAKECODE_NOTES) return 0;
     return notePowers[i];
-#else
-    return 0;
-#endif
 }
 
 // Returns the mean normalized power across all notes.
 //%
 float getAvgNotePower() {
-    return avgBinPower;
+    return avgNotePower;
 }
 
 // Returns the max note power
 //%
 float getMaxNotePower() {
-    return maxBinPower;
+    return maxNotePower;
 }
 
 //% 
 float getBin(int binIndex) {
-#if MICROBIT_CODAL
     if (binIndex < 0 || binIndex >= BLOCK_SIZE / 2) return 0;
     return ((float)fftOut[2 * binIndex] * (float)fftOut[2 * binIndex] + (float)fftOut[2 * binIndex + 1] * (float)fftOut[2 * binIndex + 1]);
-#else
-    return 0;
-#endif
 }
+
+//% 
+float getMaxBinPower() {
+    return maxBinPower;
+}   
+
+//%
+float getMaxBinIndex() {
+    return maxBinIndex;
+}
+
+//% 
+float getBinWidth() {
+    return BIN_WIDTH;
+}
+
 
 // Returns the cents error for note i (range roughly -2000 to +2000; divide by 40 for cents).
 //%
 int getNoteCents(int i) {
-#if MICROBIT_CODAL
     if (i < 0 || i >= MAKECODE_NOTES) return 0;
     return noteCents[i];
-#else
-    return 0;
-#endif
 }
 
 } // namespace frequencies

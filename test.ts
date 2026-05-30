@@ -1,7 +1,6 @@
 
 basic.showString("St")
 serial.writeLine("Start")
-frequencies.inititialize()
 // Show "ping" ever 5 s
 // loops.everyInterval(5000, function () {
 //     serial.writeLine("ping")
@@ -44,7 +43,12 @@ frequencies.watchNote(Note.B3, function (note: Note, power: number, cents: numbe
         if(power > 0) {
             serial.writeLine("B3 power " + power + " cents " + cents)
         }
-    })
+})
+    
+
+frequencies.watchMaxPower(function (lowFrequency: number, highFrequency: number, power: number) {
+    serial.writeLine("Max power " + power + " in range " + lowFrequency + "-" + highFrequency)
+})
 
 input.onButtonPressed(Button.A, function () {
     // Enable microphone sampling 

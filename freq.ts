@@ -38,6 +38,9 @@ namespace frequencies {
 
     // Note watch handlers are a combination of a note (to filter for) and a handler that is called with the power and cents for that note each time it is updated
     let noteWatchHandlers: [Note, (note: Note, power: number, cents: number) => void][] = [];
+    let watchMaxPowerHandlers: ((lowFrequency: number, highFrequency: number, power: number) => void)[] = [];
+
+    let initialized = false;
 
     /**
      */
@@ -46,9 +49,10 @@ namespace frequencies {
     //% weight=500
     export function startNote(handler: (note: Note, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
         noteStartHandlers.push(handler)
     } 
+
 
     /**
      */
@@ -57,10 +61,15 @@ namespace frequencies {
     //% weight=500
     export function stopNote(handler: (note: Note, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
         noteStopHandlers.push(handler)
     } 
 
+
+    export function watchMaxPower(handler: (lowFrequency: number, highFrequency: number, power: number) => void) {
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        watchMaxPowerHandlers.push(handler)
+    }
 
     /**
      */
@@ -69,7 +78,7 @@ namespace frequencies {
     //% weight=500
     export function playingNote(handler: (note: Note, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
         notePlayingHandlers.push(handler)
     } 
 
@@ -80,7 +89,7 @@ namespace frequencies {
     //% weight=700
     export function watchNote(note: Note, handler: (theNote: Note, power: number, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
         noteWatchHandlers.push([note, handler])
     } 
 
@@ -149,6 +158,14 @@ namespace frequencies {
      function doOnNotesUpdated() {
         // Print max power , average power
         
+         // If any handlers for frequency watching
+         let maxBinPower = getMaxBinPower();
+         let maxBinIndex = getMaxBinIndex();
+         let binWidth = getBinWidth();
+         let lowFrequency = maxBinIndex * binWidth;
+         let highFrequency = (maxBinIndex + 1) * binWidth;
+         watchMaxPowerHandlers.forEach(h => h(lowFrequency, highFrequency, maxBinPower))
+                  
         // if maxPower > 5x average power, print out all notes that are >50% of max power
         let maxPower = getMaxNotePower();
         let avgPower = getAvgNotePower();
@@ -285,7 +302,9 @@ namespace frequencies {
         return 0;
     }
 
-    export function inititialize() {
+    export function initialize() {
+        if(initialized) return;
+        initialized = true;
         onNotesUpdated(doOnNotesUpdated);
         setup();
     }
@@ -297,4 +316,20 @@ namespace frequencies {
         return -1;
     }
 
+    //% shim=frequencies::getMaxBinPower
+    export function getMaxBinPower(): number {
+        return 0;
+    }
+
+    //% shim=frequencies::getMaxBinIndex
+    export function getMaxBinIndex(): number {
+        return 0;
+    }
+    
+    //% shim=frequencies::getBinWidth
+    export function getBinWidth(): number {
+        return 0;
+    }
+
 }
+
