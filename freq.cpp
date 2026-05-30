@@ -4,9 +4,10 @@
 
 using namespace pxt;
 
-#if MICROBIT_CODAL
 
 namespace frequencies {
+
+static void processFiber();
 
 static const int   NUM_NOTES  = 36;
 static const int   BLOCK_SIZE = 4096;
@@ -51,17 +52,13 @@ static const float noteFreq[NUM_NOTES] = {
     987.76660251f  // [35] B5
 };
 
-// static const char * const noteName[NUM_NOTES] = {
-//     "C3",  "C#3", "D3",  "D#3", "E3",  "F3",  "F#3", "G3",  "G#3", "A3",  "A#3", "B3",
-//     "C4",  "C#4", "D4",  "D#4", "E4",  "F4",  "F#4", "G4",  "G#4", "A4",  "A#4", "B4",
-//     "C5",  "C#5", "D5",  "D#5", "E5",  "F5",  "F#5", "G5",  "G#5", "A5",  "A#5", "B5"
-// };
-
-
 
 // Sample rate: CODAL rounds 11000 Hz request to 16 MHz / 1440 = 11111.1̄ Hz
 static const float SAMPLE_RATE = 11111.111f;
 static const float BIN_WIDTH   = SAMPLE_RATE / BLOCK_SIZE;  // ≈2.713 Hz/bin
+static float   avgBinPower = 0;
+static float   maxBinPower = 0;
+static Action notesUpdatedAction = nullptr;
 
 // CMSIS-DSP Q15 real FFT state and buffers
 static arm_rfft_instance_q15 rfftInst;
@@ -71,6 +68,8 @@ static q15_t fftOut[BLOCK_SIZE * 2 + 2]; // complex output: 4 * (N/2) + 2 = 8194
 // Per-note results written by processFiber, read by getters
 static float notePowers[NUM_NOTES];
 static int   noteCents[NUM_NOTES];
+
+#if MICROBIT_CODAL
 
 class FreqSampler : public codal::DataSink {
 public:
@@ -125,32 +124,24 @@ public:
 
 static FreqSampler *sampler = nullptr;
 
-} // namespace frequencies
-
 #endif // MICROBIT_CODAL
-
-namespace frequencies {
-
-static void processFiber();
 
 //% advanced=true
 void setup() {
+#if MICROBIT_CODAL
     if (sampler) return;
     sampler = new FreqSampler();
     sampler->setup();
     uBit.audio.activateMic();
-#if MICROBIT_CODAL
     arm_rfft_init_4096_q15(&rfftInst, 0, 1);
     create_fiber(processFiber);
 #endif
 }
 
-static float   avgBinPower = 0;
-static float   maxBinPower = 0;
-static Action notesUpdatedAction = nullptr;
 
 
 static void processFiber() {
+#if MICROBIT_CODAL
     // NOTE: This only uses MAKECODE_NOTES
     while (true) {
         sampler->getData = true;
@@ -236,6 +227,7 @@ static void processFiber() {
         if (notesUpdatedAction) 
             pxt::runAction0(notesUpdatedAction);
     }
+#endif
 }
 
 
