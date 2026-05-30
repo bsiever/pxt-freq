@@ -104,20 +104,6 @@ namespace frequencies {
         "F#5", "G5", "G#5", "A5", "Bb5", "B5"
     ];
 
-
-    //% shim=ENUM_GET
-    //% blockId=note_enum_shim
-    //% block="Note $arg"
-    //% enumName="Notes"
-    //% enumMemberName="note"
-    //% enumPromptHint="e.g. C4, CSharp4, ..."
-    //% enumInitialMembers="C4"
-    export function _noteEnumShim(arg: number) {
-        // This function should do nothing, but must take in a single
-        // argument of type number and return a number value.
-        return arg;
-    }
-
     // Function to convert Note enum value to string
     //% block="note to string $note"
     //% note.shadow="device_note"
