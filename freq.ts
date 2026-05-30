@@ -95,63 +95,39 @@ namespace frequencies {
         Note.FSharp5, Note.G5, Note.GSharp5, Note.A5, Note.Bb5, Note.B5
     ];
 
+    const noteNames = [
+        "C3", "C#3", "D3", "Eb3", "E3", "F3",
+        "F#3", "G3", "G#3", "A3", "Bb3", "B3",
+        "C4", "C#4", "D4", "Eb4", "E4", "F4",
+        "F#4", "G4", "G#4", "A4", "Bb4", "B4",
+        "C5", "C#5", "D5", "Eb5", "E5", "F5",
+        "F#5", "G5", "G#5", "A5", "Bb5", "B5"
+    ];
 
-    // //% shim=ENUM_GET
-    // //% blockId=note_enum_shim
-    // //% block="Note $arg"
-    // //% enumName="Notes"
-    // //% enumMemberName="note"
-    // //% enumPromptHint="e.g. C4, CSharp4, ..."
-    // //% enumInitialMembers="C4"
-    // export function _noteEnumShim(arg: number) {
-    //     // This function should do nothing, but must take in a single
-    //     // argument of type number and return a number value.
-    //     return arg;
-    // }
+
+    //% shim=ENUM_GET
+    //% blockId=note_enum_shim
+    //% block="Note $arg"
+    //% enumName="Notes"
+    //% enumMemberName="note"
+    //% enumPromptHint="e.g. C4, CSharp4, ..."
+    //% enumInitialMembers="C4"
+    export function _noteEnumShim(arg: number) {
+        // This function should do nothing, but must take in a single
+        // argument of type number and return a number value.
+        return arg;
+    }
 
     // Function to convert Note enum value to string
-    //% block="note to string"
-    export function noteToString(note: Note): string {
+    //% block="note to string $note"
+    //% note.shadow="device_note"
+    //% weight=900    
+    export function noteToString(note: number): string {
         // Switch statement to convert Note enum value to string
-        switch (note) {
-            case Note.C3: return "C3";
-            case Note.CSharp3: return "C#3";
-            case Note.D3: return "D3";
-            case Note.Eb3: return "Eb3";
-            case Note.E3: return "E3";
-            case Note.F3: return "F3";
-            case Note.FSharp3: return "F#3";
-            case Note.G3: return "G3";
-            case Note.GSharp3: return "G#3";
-            case Note.A3: return "A3";
-            case Note.Bb3: return "Bb3";
-            case Note.B3: return "B3";
-            case Note.C4: return "C4";
-            case Note.CSharp4: return "C#4";
-            case Note.D4: return "D4";
-            case Note.Eb4: return "Eb4";
-            case Note.E4: return "E4";
-            case Note.F4: return "F4";
-            case Note.FSharp4: return "F#4";
-            case Note.G4: return "G4";
-            case Note.GSharp4: return "G#4";
-            case Note.A4: return "A4";
-            case Note.Bb4: return "Bb4";
-            case Note.B4: return "B4";
-            case Note.C5: return "C5";
-            case Note.CSharp5: return "C#5";
-            case Note.D5: return "D5";
-            case Note.Eb5: return "Eb5";
-            case Note.E5: return "E5";
-            case Note.F5: return "F5";
-            case Note.FSharp5: return "F#5";
-            case Note.G5: return "G5";
-            case Note.GSharp5: return "G#5";
-            case Note.A5: return "A5";
-            case Note.Bb5: return "Bb5";
-            case Note.B5: return "B5";
-            default: return "";
+        for (let i = 0; i < notes.length; i++) {
+            if (notes[i] == note) return noteNames[i];
         }
+        return "";
     }
 
     /** Convert an index to a Note enum */
