@@ -27,8 +27,8 @@
 #ifndef FAST_MATH_FUNCTIONS_H_
 #define FAST_MATH_FUNCTIONS_H_
 
-#include "arm_math_types.h"
-#include "arm_math_memory.h"
+#include "../arm_math_types.h"
+#include "../arm_math_memory.h"
 
 #include "dsp/none.h"
 #include "dsp/utils.h"

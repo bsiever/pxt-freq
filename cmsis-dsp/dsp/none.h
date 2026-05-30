@@ -37,7 +37,7 @@ of intrinsics.
 #ifndef NONE_H_
 #define NONE_H_
 
-#include "arm_math_types.h"
+#include "../arm_math_types.h"
 
 #ifdef   __cplusplus
 extern "C"
