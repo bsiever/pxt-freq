@@ -147,7 +147,7 @@ namespace frequencies {
     // Shim for onNotesUpdated - called by C++ when new results are available
     //% shim=frequencies::onNotesUpdated
     export function onNotesUpdated(handler: Action) {
-
+        0;
     }
 
     /**
