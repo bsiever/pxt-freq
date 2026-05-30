@@ -39,6 +39,9 @@ namespace frequencies {
     // Note watch handlers are a combination of a note (to filter for) and a handler that is called with the power and cents for that note each time it is updated
     let noteWatchHandlers: [Note, (note: Note, power: number, cents: number) => void][] = [];
 
+    // Is the library initialized?
+    let initialized = false;
+
     /**
      */
     //% block="started $note ($cents)"
@@ -46,7 +49,7 @@ namespace frequencies {
     //% weight=500
     export function startNote(handler: (note: Note, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        inititialize() // ensure setup is called so that we have data for the listeners to process when they are added.
         noteStartHandlers.push(handler)
     } 
 
@@ -57,7 +60,7 @@ namespace frequencies {
     //% weight=500
     export function stopNote(handler: (note: Note, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        inititialize() // ensure setup is called so that we have data for the listeners to process when they are added.
         noteStopHandlers.push(handler)
     } 
 
@@ -69,7 +72,7 @@ namespace frequencies {
     //% weight=500
     export function playingNote(handler: (note: Note, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        inititialize() // ensure setup is called so that we have data for the listeners to process when they are added.
         notePlayingHandlers.push(handler)
     } 
 
@@ -80,7 +83,7 @@ namespace frequencies {
     //% weight=700
     export function watchNote(note: Note, handler: (theNote: Note, power: number, cents: number) => void) {
         // Add handler to collection of note handlers
-        setup() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        inititialize() // ensure setup is called so that we have data for the listeners to process when they are added.
         noteWatchHandlers.push([note, handler])
     } 
 
@@ -286,8 +289,10 @@ namespace frequencies {
     }
 
     export function inititialize() {
+        if(initialized) return;
         onNotesUpdated(doOnNotesUpdated);
         setup();
+        initialized = true;
     }
 
     export function getNoteIndex(note: Note): number {

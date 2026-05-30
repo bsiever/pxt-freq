@@ -4,7 +4,6 @@
 
 using namespace pxt;
 
-
 namespace frequencies {
 
 static void processFiber();
@@ -12,7 +11,7 @@ static void processFiber();
 static const int   NUM_NOTES  = 36;
 static const int   BLOCK_SIZE = 4096;
 #define MAKECODE_NOTES NUM_NOTES
-
+ 
 static const float noteFreq[NUM_NOTES] = {
     130.81278265f,  // [ 0] C3
     138.59131549f,  // [ 1] C#3
@@ -69,8 +68,6 @@ static q15_t fftOut[BLOCK_SIZE * 2 + 2]; // complex output: 4 * (N/2) + 2 = 8194
 static float notePowers[NUM_NOTES];
 static int   noteCents[NUM_NOTES];
 
-#if MICROBIT_CODAL
-
 class FreqSampler : public codal::DataSink {
 public:
     SplitterChannel *channel;
@@ -124,24 +121,20 @@ public:
 
 static FreqSampler *sampler = nullptr;
 
-#endif // MICROBIT_CODAL
 
 //% advanced=true
 void setup() {
-#if MICROBIT_CODAL
     if (sampler) return;
     sampler = new FreqSampler();
     sampler->setup();
     uBit.audio.activateMic();
     arm_rfft_init_4096_q15(&rfftInst, 0, 1);
     create_fiber(processFiber);
-#endif
 }
 
 
 
 static void processFiber() {
-#if MICROBIT_CODAL
     // NOTE: This only uses MAKECODE_NOTES
     while (true) {
         sampler->getData = true;
@@ -227,7 +220,7 @@ static void processFiber() {
         if (notesUpdatedAction) 
             pxt::runAction0(notesUpdatedAction);
     }
-#endif
+
 }
 
 
@@ -241,22 +234,14 @@ void onNotesUpdated(Action a) {
 
 //%
 int getNumNotes() {
-#if MICROBIT_CODAL
     return MAKECODE_NOTES;
-#else
-    return 0;
-#endif
 }
 
 // Returns normalized power for note i, scaled by 1000 (i.e. 1000 = full-scale).
 //%
 float getNotePower(int i) {
-#if MICROBIT_CODAL
     if (i < 0 || i >= MAKECODE_NOTES) return 0;
     return notePowers[i];
-#else
-    return 0;
-#endif
 }
 
 // Returns the mean normalized power across all notes.
@@ -273,23 +258,15 @@ float getMaxNotePower() {
 
 //% 
 float getBin(int binIndex) {
-#if MICROBIT_CODAL
     if (binIndex < 0 || binIndex >= BLOCK_SIZE / 2) return 0;
     return ((float)fftOut[2 * binIndex] * (float)fftOut[2 * binIndex] + (float)fftOut[2 * binIndex + 1] * (float)fftOut[2 * binIndex + 1]);
-#else
-    return 0;
-#endif
 }
 
 // Returns the cents error for note i (range roughly -2000 to +2000; divide by 40 for cents).
 //%
 int getNoteCents(int i) {
-#if MICROBIT_CODAL
     if (i < 0 || i >= MAKECODE_NOTES) return 0;
     return noteCents[i];
-#else
-    return 0;
-#endif
 }
 
 } // namespace frequencies

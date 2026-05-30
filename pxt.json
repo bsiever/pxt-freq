@@ -1,6 +1,6 @@
 {
-    "name": "pxt-freq",
-    "version": "0.1.4",
+    "name": "pxt-freq - Copy",
+    "version": "0.1.5",
     "description": "Frequency Detection Library",
     "license": "MIT",
     "dependencies": {
@@ -23,8 +23,6 @@
         "cmsis-dsp/cmsis_compiler.h",
         "cmsis-dsp/arm_math_types.h",
         "cmsis-dsp/arm_math_memory.h",
-        "cmsis-dsp/dsp/arm_math_types.h",
-        "cmsis-dsp/dsp/arm_math_memory.h",
         "cmsis-dsp/arm_common_tables.h",
         "cmsis-dsp/arm_const_structs.h",
         "cmsis-dsp/dsp/transform_functions.h",
@@ -32,7 +30,9 @@
         "cmsis-dsp/dsp/utils.h",
         "cmsis-dsp/dsp/basic_math_functions.h",
         "cmsis-dsp/dsp/complex_math_functions.h",
-        "cmsis-dsp/dsp/fast_math_functions.h"
+        "cmsis-dsp/dsp/fast_math_functions.h",
+        "cmsis-dsp/dsp/arm_math_types.h",
+        "cmsis-dsp/dsp/arm_math_memory.h"
     ],
     "testFiles": [
         "test.ts"
@@ -53,5 +53,8 @@
         "name": "Frequency Detection Library",
         "imageUrl": "file:../icon.png",
         "feedbackUrl": "http://siever.info"
-    }
+    },
+    "disablesVariants": [
+        "mbdal"
+    ]
 }
