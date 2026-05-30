@@ -30,8 +30,20 @@ frequencies.stopNote(function (note: Note, cents: number) {
 
 
 // Add a handler to watch C4 and print it's power and cents value
-    frequencies.watchNote(Note.C4, function (note: Note, power: number, cents: number) {
-        serial.writeLine("C4 power " + power + " cents " + cents)
+frequencies.watchNote(Note.C4, function (note: Note, power: number, cents: number) {
+        if(power > 0) {
+            serial.writeLine("C4 power " + power + " cents " + cents)
+        }
+    })
+frequencies.watchNote(Note.CSharp4, function (note: Note, power: number, cents: number) {
+        if(power > 0) {
+            serial.writeLine("C#4 power " + power + " cents " + cents)
+        }
+    })
+frequencies.watchNote(Note.B3, function (note: Note, power: number, cents: number) {
+        if(power > 0) {
+            serial.writeLine("B3 power " + power + " cents " + cents)
+        }
     })
 
 input.onButtonPressed(Button.A, function () {

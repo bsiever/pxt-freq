@@ -177,14 +177,21 @@ namespace frequencies {
         for (let item of noteWatchHandlers) {
             let [note, handler] = item;
             let noteIndex = getNoteIndex(note);
-            let normalizedPower = maxPower > 0 ? Math.min(1000, Math.round(getNotePower(noteIndex) / maxPower * 1000)) : 0;
-            handler(note, normalizedPower, getNoteCents(noteIndex))
+            let power = getNotePower(noteIndex);
+            let cents = getNoteCents(noteIndex)/40.0;
+            if (power > threshold) {
+                power = power / maxPower * 1000; // rescale power to be out of 1000 for the handler
+            } else {
+                power = 0;
+                cents = 0;
+            }
+            handler(note, power, cents);
         }
 
         // State machine to iterate through all notes and update the state and handlers)
         for(let i = 0; i < getNumNotes(); i++) {
             let power = getNotePower(i);
-            let cents = getNoteCents(i);
+            let cents = getNoteCents(i)/40.0;
             switch (noteStatus[i]) {
                 
                 case FrequencyChange.Stop:
@@ -214,7 +221,7 @@ namespace frequencies {
                 case FrequencyChange.Stopping:
                     if (power < threshold) {
                         noteStatus[i] = FrequencyChange.Stop;
-                        noteStopHandlers.forEach(h => h(getNote(i), cents))
+                        noteStopHandlers.forEach(h => h(getNote(i), 0))
                     } else {
                         noteStatus[i] = FrequencyChange.Playing;
                         notePlayingHandlers.forEach(h => h(getNote(i), cents))
