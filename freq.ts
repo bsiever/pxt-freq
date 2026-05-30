@@ -177,8 +177,9 @@ namespace frequencies {
         for (let item of noteWatchHandlers) {
             let [note, handler] = item;
             let noteIndex = getNoteIndex(note);
-            handler(note, getNotePower(noteIndex), getNoteCents(noteIndex))
-        }   
+            let normalizedPower = maxPower > 0 ? Math.min(1000, Math.round(getNotePower(noteIndex) / maxPower * 1000)) : 0;
+            handler(note, normalizedPower, getNoteCents(noteIndex))
+        }
 
         // State machine to iterate through all notes and update the state and handlers)
         for(let i = 0; i < getNumNotes(); i++) {
