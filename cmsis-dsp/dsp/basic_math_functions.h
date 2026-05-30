@@ -30,8 +30,8 @@
 #include "../arm_math_types.h"
 #include "../arm_math_memory.h"
 
-#include "dsp/none.h"
-#include "dsp/utils.h"
+#include "none.h"
+#include "utils.h"
 
 
 #ifdef   __cplusplus

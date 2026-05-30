@@ -30,9 +30,9 @@
 #include "../arm_math_types.h"
 #include "../arm_math_memory.h"
 
-#include "dsp/none.h"
-#include "dsp/utils.h"
-#include "dsp/fast_math_functions.h"
+#include "none.h"
+#include "utils.h"
+#include "fast_math_functions.h"
 
 #ifdef   __cplusplus
 extern "C"
