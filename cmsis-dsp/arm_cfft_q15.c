@@ -1,4 +1,4 @@
-﻿/* ----------------------------------------------------------------------
+/* ----------------------------------------------------------------------
  * Project:      CMSIS DSP Library
  * Title:        arm_cfft_q15.c
  * Description:  Combined Radix Decimation in Q15 Frequency CFFT processing function

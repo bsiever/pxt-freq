@@ -6,31 +6,6 @@
     "dependencies": {
         "core": "*"
     },
-    "targetFiles": {
-        "mbcodal": [
-        "cmsis-dsp/arm_rfft_init_q15.c",
-        "cmsis-dsp/arm_rfft_q15.c",
-        "cmsis-dsp/arm_cfft_q15.c",
-        "cmsis-dsp/arm_cfft_radix4_q15.c",
-        "cmsis-dsp/arm_bitreversal2.c",
-        "cmsis-dsp/arm_common_tables_q15.c",
-        "cmsis-dsp/arm_const_structs_q15.c",
-        "cmsis-dsp/arm_shift_q15.c",
-        "cmsis-dsp/LICENSE",
-        "cmsis-dsp/arm_compiler_specific.h",
-        "cmsis-dsp/cmsis_compiler.h",
-        "cmsis-dsp/arm_math_types.h",
-        "cmsis-dsp/arm_math_memory.h",
-        "cmsis-dsp/arm_common_tables.h",
-        "cmsis-dsp/arm_const_structs.h",
-        "cmsis-dsp/dsp/transform_functions.h",
-        "cmsis-dsp/dsp/none.h",
-        "cmsis-dsp/dsp/utils.h",
-        "cmsis-dsp/dsp/basic_math_functions.h",
-        "cmsis-dsp/dsp/complex_math_functions.h",
-        "cmsis-dsp/dsp/fast_math_functions.h"
-        ]
-    },
     "files": [
         "README.md",
         "freq.ts",
@@ -69,6 +44,31 @@
         "microbit"
     ],
     "preferredEditor": "tsprj",
+    "targetFiles": {
+        "mbcodal": [
+            "cmsis-dsp/arm_rfft_init_q15.c",
+            "cmsis-dsp/arm_rfft_q15.c",
+            "cmsis-dsp/arm_cfft_q15.c",
+            "cmsis-dsp/arm_cfft_radix4_q15.c",
+            "cmsis-dsp/arm_bitreversal2.c",
+            "cmsis-dsp/arm_common_tables_q15.c",
+            "cmsis-dsp/arm_const_structs_q15.c",
+            "cmsis-dsp/arm_shift_q15.c",
+            "cmsis-dsp/LICENSE",
+            "cmsis-dsp/arm_compiler_specific.h",
+            "cmsis-dsp/cmsis_compiler.h",
+            "cmsis-dsp/arm_math_types.h",
+            "cmsis-dsp/arm_math_memory.h",
+            "cmsis-dsp/arm_common_tables.h",
+            "cmsis-dsp/arm_const_structs.h",
+            "cmsis-dsp/dsp/transform_functions.h",
+            "cmsis-dsp/dsp/none.h",
+            "cmsis-dsp/dsp/utils.h",
+            "cmsis-dsp/dsp/basic_math_functions.h",
+            "cmsis-dsp/dsp/complex_math_functions.h",
+            "cmsis-dsp/dsp/fast_math_functions.h"
+        ]
+    },
     "authors": [
         "Bill Siever <bsiever@gmail.com>"
     ],
