@@ -1,6 +1,9 @@
 #include "pxt.h"
 #include "MicroBit.h"
+
+#if MICROBIT_CODAL
 #include "dsp/transform_functions.h"
+#endif
 
 using namespace pxt;
 
