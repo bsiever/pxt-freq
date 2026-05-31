@@ -123,6 +123,20 @@ namespace frequencies {
         return "";
     }
 
+    //% shim=ENUM_GET
+    //% blockId=note_enum_shim
+    //% block="Note $arg"
+    //% enumName="Notes"
+    //% enumMemberName="note"
+    //% enumPromptHint="e.g. C4, CSharp4, ..."
+    //% enumInitialMembers="C4"
+    //% weight=2000
+    export function _noteEnumShim(arg: number) {
+        // This function should do nothing, but must take in a single
+        // argument of type number and return a number value.
+        return arg;
+    }
+
     // ************* Advanced User Blocks ******************
 
     /** Runs handler each detection cycle with the frequency range (Hz) and power of the single strongest FFT bin. */
@@ -178,37 +192,26 @@ namespace frequencies {
         return getNote(0);  
     } 
 
-    //% shim=ENUM_GET
-    //% blockId=note_enum_shim
-    //% block="Note $arg"
-    //% enumName="Notes"
-    //% enumMemberName="note"
-    //% enumPromptHint="e.g. C4, CSharp4, ..."
-    //% enumInitialMembers="C4"
-    //% weight=3900
-    export function _noteEnumShim(arg: number) {
-        // This function should do nothing, but must take in a single
-        // argument of type number and return a number value.
-        return arg;
-    }
-    /** Convert an index to a Note enum */
-    //% block="note at index $index"
-    //% weight=4000
-    //% advanced=true
-    export function getNote(index: number): Note {
-        index = Math.max(0, Math.min(index, notes.length - 1));
-        return notes[index];
-    }
-
     /** Convert a Note enum to an index */
     //% block="index of $note"
-    //% weight=3900
+    //% weight=2000
     //% advanced=true
+    //% note.shadow="device_note"
     export function getNoteIndex(note: Note): number {
         for (let i = 0; i < notes.length; i++) {
             if (notes[i] == note) return i;
         }
         return -1;
+    }
+
+
+    /** Convert an index to a Note enum */
+    //% block="note at index $index"
+    //% weight=1000
+    //% advanced=true
+    export function getNote(index: number): Note {
+        index = Math.max(0, Math.min(index, notes.length - 1));
+        return notes[index];
     }
 
 
