@@ -194,10 +194,10 @@ namespace frequencies {
 
     /** Convert a Note enum to an index */
     //% block="index of $note"
+    //% note.shadow="device_note"
     //% weight=2000
     //% advanced=true
-    //% note.shadow="device_note"
-    export function getNoteIndex(note: Note): number {
+    export function getNoteIndex(note: number): number {
         for (let i = 0; i < notes.length; i++) {
             if (notes[i] == note) return i;
         }
