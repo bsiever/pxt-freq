@@ -272,6 +272,12 @@ frequencies.watchMaxPower(function (lowFrequency: number, highFrequency: number,
     }
 })
 ```
+## Examples
+
+* [Tuner](https://makecode.microbit.org/S42884-74123-94599-88153)
+* [Showing Notes](https://makecode.microbit.org/S73796-69444-04808-40467)
+* [React to Individual Notes](https://makecode.microbit.org/S56013-23381-96382-81164)
+* [Show when a new note starts playing](https://makecode.microbit.org/S15503-74637-46293-72535)
 
 ---
 
