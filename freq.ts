@@ -65,7 +65,9 @@ namespace frequencies {
         noteStopHandlers.push(handler)
     } 
 
-
+    //% block="watch max power (low frequency $lowFrequency, high frequency $highFrequency, power $power)"
+    //% draggableParameters="reporter"
+    //% weight=700
     export function watchMaxPower(handler: (lowFrequency: number, highFrequency: number, power: number) => void) {
         initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
         watchMaxPowerHandlers.push(handler)
