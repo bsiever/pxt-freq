@@ -1,6 +1,6 @@
 {
     "name": "pxt-freq",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "description": "Frequency Detection Library",
     "license": "MIT",
     "dependencies": {
