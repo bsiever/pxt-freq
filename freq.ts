@@ -14,9 +14,8 @@
 //% color=#6a8694
 //% icon="\uf001"
 //% block="Frequencies"
-//% groups="['Frequencies']"
+//% groups="['Frequencies', 'Advanced']"
 namespace frequencies {
-
 
     // Array of Frequency status for all 48 notes (C3–B6)
     let noteStatus: FrequencyChange[] = [
@@ -30,7 +29,6 @@ namespace frequencies {
         FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop, FrequencyChange.Stop,
     ];
 
-
     // Array of note handlers that will be called when a note is detected as starting or stopping
     let noteStartHandlers: ((note: Note, cents: number) => void)[] = [];
     let noteStopHandlers: ((note: Note, cents: number) => void)[] = [];
@@ -42,100 +40,7 @@ namespace frequencies {
 
     let initialized = false;
 
-    /**
-     */
-    //% block="started $note ($cents)"
-    //% draggableParameters="reporter"
-    //% weight=500
-    export function startNote(handler: (note: Note, cents: number) => void) {
-        // Add handler to collection of note handlers
-        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        noteStartHandlers.push(handler)
-    } 
-
-
-    /**
-     */
-    //% block="stopped $note ($cents)"
-    //% draggableParameters="reporter"
-    //% weight=500
-    export function stopNote(handler: (note: Note, cents: number) => void) {
-        // Add handler to collection of note handlers
-        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        noteStopHandlers.push(handler)
-    } 
-
-    //% block="watch max power (low frequency $lowFrequency, high frequency $highFrequency, power $power)"
-    //% draggableParameters="reporter"
-    //% weight=700
-    export function watchMaxPower(handler: (lowFrequency: number, highFrequency: number, power: number) => void) {
-        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        watchMaxPowerHandlers.push(handler)
-    }
-
-    /**
-     */
-    //% block="playing $note ($cents)"
-    //% draggableParameters="reporter"
-    //% weight=500
-    export function playingNote(handler: (note: Note, cents: number) => void) {
-        // Add handler to collection of note handlers
-        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        notePlayingHandlers.push(handler)
-    } 
-
-    /**
-     */
-    //% block="watch $note ($theNote, $power, $cents)"
-    //% draggableParameters="reporter"
-    //% weight=700
-    export function watchNote(note: Note, handler: (theNote: Note, power: number, cents: number) => void) {
-        // Add handler to collection of note handlers
-        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
-        noteWatchHandlers.push([note, handler])
-    } 
-
-    const BIN_WIDTH=getBinWidth(); // Hz/bin
-
-    // Given a specific frequency, if it's in a bin for a specific note, return that note.  Otherwise return the closest note below the given frequency
-    //% block="note for frequency below or equal to $frequency"
-    export function getNoteForBelowOrEqual(frequency: number): Note {
-        // Iterate through note frequencies:
-        // Move the frequency to the middle of it's bin
-        let i = 0;
-        while (i < noteFrequencies.length) {
-            let binIndex = Math.floor(noteFrequencies[i] / BIN_WIDTH);
-            let lowFrequency = binIndex * BIN_WIDTH;
-            let highFrequency = lowFrequency + BIN_WIDTH;
-
-
-            // If it's in this bucket
-            if(frequency==lowFrequency)
-                return getNote(i);
-            else if (frequency < lowFrequency) {
-                return getNote(i-1);
-            }
-            i++;
-        }
-        return getNote(noteFrequencies.length - 1);
-    }
-
-    // Given a specific frequency, if it's in a bin for a specific note, return that note.  Otherwise return the closest note above the given frequency
-    //% block="note for frequency above or equal to $frequency"
-    export function getNoteForAboveOrEqual(frequency: number): Note {
-        let i = noteFrequencies.length - 2;
-        while (i >= 0) {
-            let binIndex = Math.ceil(noteFrequencies[i] / BIN_WIDTH);
-            let highFrequency = binIndex * BIN_WIDTH;
-            if(highFrequency == frequency)
-                return getNote(i);
-            if (highFrequency < frequency) 
-                return getNote(i+1);
-            i--;
-        }
-        return getNote(0);  
-    } 
-
+    const BIN_WIDTH = getBinWidth(); // Hz/bin
 
     // Array of notes mapping C++ index (0=C3 … B5) to Note enum values
     const notes = [
@@ -165,23 +70,51 @@ namespace frequencies {
         739.99, 783.99, 830.61, 880.00, 932.33, 987.77
     ];
 
-    //% shim=ENUM_GET
-    //% blockId=note_enum_shim
-    //% block="Note $arg"
-    //% enumName="Notes"
-    //% enumMemberName="note"
-    //% enumPromptHint="e.g. C4, CSharp4, ..."
-    //% enumInitialMembers="C4"
-    export function _noteEnumShim(arg: number) {
-        // This function should do nothing, but must take in a single
-        // argument of type number and return a number value.
-        return arg;
-    }
+    // ************* Primary User Blocks ******************
+    /** Runs handler once when a new note begins. Receives the note and pitch deviation in cents (positive = sharp, negative = flat). */
+    //% block="started $note ($cents)"
+    //% draggableParameters="reporter"
+    //% weight=4000
+    export function startNote(handler: (note: Note, cents: number) => void) {
+        // Add handler to collection of note handlers
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        noteStartHandlers.push(handler)
+    } 
 
-    // Function to convert Note enum value to string
+    /** Runs handler once when a playing note stops. Receives the note that stopped and its last pitch deviation in cents. */
+    //% block="stopped $note ($cents)"
+    //% draggableParameters="reporter"
+    //% weight=3900
+    export function stopNote(handler: (note: Note, cents: number) => void) {
+        // Add handler to collection of note handlers
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        noteStopHandlers.push(handler)
+    } 
+
+    /** Runs handler each detection cycle (~0.37 s) while a note is sustained. Receives the note and current pitch deviation in cents. */
+    //% block="playing $note ($cents)"
+    //% draggableParameters="reporter"
+    //% weight=3800
+    export function playingNote(handler: (note: Note, cents: number) => void) {
+        // Add handler to collection of note handlers
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        notePlayingHandlers.push(handler)
+    } 
+
+    /** Runs handler each detection cycle for a specific note. power is 0–1000 (0 = silent, 1000 = loudest detected); cents is pitch deviation. */
+    //% block="watch $note ($theNote, $power, $cents)"
+    //% draggableParameters="reporter"
+    //% weight=3700
+    export function watchNote(note: Note, handler: (theNote: Note, power: number, cents: number) => void) {
+        // Add handler to collection of note handlers
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        noteWatchHandlers.push([note, handler])
+    } 
+
+    /** Converts a Note value to a readable string such as "A4" or "C#3". */
     //% block="note to string $note"
     //% note.shadow="device_note"
-    //% weight=900    
+    //% weight=2000
     export function noteToString(note: number): string {
         // Switch statement to convert Note enum value to string
         for (let i = 0; i < notes.length; i++) {
@@ -190,24 +123,98 @@ namespace frequencies {
         return "";
     }
 
+    // ************* Advanced User Blocks ******************
+
+    /** Runs handler each detection cycle with the frequency range (Hz) and power of the single strongest FFT bin. */
+    //% block="watch max power (low frequency $lowFrequency, high frequency $highFrequency, power $power)"
+    //% draggableParameters="reporter"
+    //% advanced=true
+    //% weight=4000
+    export function watchMaxPower(handler: (lowFrequency: number, highFrequency: number, power: number) => void) {
+        initialize() // ensure setup is called so that we have data for the listeners to process when they are added.    
+        watchMaxPowerHandlers.push(handler)
+    }
+
+    /** Returns the note whose FFT bin contains or falls at or below the given frequency (Hz). */
+    //% block="note for frequency below or equal to $frequency"
+    //% weight=3800
+    //% advanced=true
+    export function getNoteForBelowOrEqual(frequency: number): Note {
+        // Iterate through note frequencies:
+        // Move the frequency to the middle of it's bin
+        let i = 0;
+        while (i < noteFrequencies.length) {
+            let binIndex = Math.floor(noteFrequencies[i] / BIN_WIDTH);
+            let lowFrequency = binIndex * BIN_WIDTH;
+            let highFrequency = lowFrequency + BIN_WIDTH;
+
+
+            // If it's in this bucket
+            if(frequency==lowFrequency)
+                return getNote(i);
+            else if (frequency < lowFrequency) {
+                return getNote(i-1);
+            }
+            i++;
+        }
+        return getNote(noteFrequencies.length - 1);
+    }
+
+    /** Returns the note whose FFT bin contains or falls at or above the given frequency (Hz). */
+    //% block="note for frequency above or equal to $frequency"
+    //% weight=3700
+    //% advanced=true
+    export function getNoteForAboveOrEqual(frequency: number): Note {
+        let i = noteFrequencies.length - 2;
+        while (i >= 0) {
+            let binIndex = Math.ceil(noteFrequencies[i] / BIN_WIDTH);
+            let highFrequency = binIndex * BIN_WIDTH;
+            if(highFrequency == frequency)
+                return getNote(i);
+            if (highFrequency < frequency) 
+                return getNote(i+1);
+            i--;
+        }
+        return getNote(0);  
+    } 
+
+    //% shim=ENUM_GET
+    //% blockId=note_enum_shim
+    //% block="Note $arg"
+    //% enumName="Notes"
+    //% enumMemberName="note"
+    //% enumPromptHint="e.g. C4, CSharp4, ..."
+    //% enumInitialMembers="C4"
+    //% weight=3900
+    export function _noteEnumShim(arg: number) {
+        // This function should do nothing, but must take in a single
+        // argument of type number and return a number value.
+        return arg;
+    }
+
+    // ************* Private / Internal Functions ******************
+
+    export function initialize() {
+        if(initialized) return;
+        initialized = true;
+        onNotesUpdated(doOnNotesUpdated);
+        setup();
+    }
+
     /** Convert an index to a Note enum */
     function getNote(index: number): Note {
         index = Math.max(0, Math.min(index, notes.length - 1));
         return notes[index];
     }
 
-    // Shim for onNotesUpdated - called by C++ when new results are available
-    //% shim=frequencies::onNotesUpdated
-    export function onNotesUpdated(handler: Action) {
-        0;
+    export function getNoteIndex(note: Note): number {
+        for (let i = 0; i < notes.length; i++) {
+            if (notes[i] == note) return i;
+        }
+        return -1;
     }
 
-    /**
-     * Register a handler called each time note detection completes.
-     * avgPower is the mean normalized power across all notes, scaled by 1000.
-     * Use getNotePower(i) and getNoteCents(i) inside the handler to read per-note results.
-     */
-     function doOnNotesUpdated() {
+    function doOnNotesUpdated() {
         // Print max power , average power
         
          // If any handlers for frequency watching
@@ -285,81 +292,53 @@ namespace frequencies {
                     break;
             }
         }   
-    }
+     }
+    
+    // ************* Private Shims to C++ ******************
 
 
-    // Shim for fft bin access 
+    // Shim for onNotesUpdated - called by C++ when new results are available
+    //% shim=frequencies::onNotesUpdated
+    export function onNotesUpdated(handler: Action) { 0; }
+
+    /** Returns the raw squared magnitude of FFT bin binIndex (0–2047). Each bin spans ~2.71 Hz. Bin 0 is DC; bin 2047 is ~5556 Hz. */
     //% shim=frequencies::getBin
-    export function getBin(_binIndex: number): number {
-        return 0;
-    }
+    export function getBin(_binIndex: number): number { return 0; }
 
-    /** Returns the number of notes tracked (C3–B6 = 48). */
+    /** Returns 36 — the number of tracked notes (C3 through B5). */
     //% shim=frequencies::getNumNotes
-    //% advanced=true
-    export function getNumNotes(): number { return 48; }
+    export function getNumNotes(): number { return 36; }
 
-    /** Returns the mean normalized power across all notes, scaled by 1000. */
+    /** Returns the mean normalized power across all 36 notes (0–1000 scale). */
     //% shim=frequencies::getAvgNotePower
-    //% advanced=true
     export function getAvgNotePower(): number { return 0; }
 
-    /**
-     * Returns normalized power for note index i, scaled by 1000.
-     * 0 = silence, 1000 = full-scale.
-     */
+    /** Returns normalized power for note at index (0=C3, 35=B5), scaled 0–1000 after harmonic suppression. */
     //% shim=frequencies::getNotePower
-    //% advanced=true
     export function getNotePower(_noteIndex: number): number { return 0; }
 
-    /**
-     * Returns the pitch error for note index i.
-     * Divide by 40 to get cents (range: −50 to +50).
-     */
+    /** Returns raw pitch deviation for note at index. Divide by 40 to get cents; positive = sharp, negative = flat. */
     //% shim=frequencies::getNoteCents
-    //% advanced=true
     export function getNoteCents(_noteIndex: number): number { return 0; }
 
-    // Shim for init
     //% shim=frequencies::setup
-    export function setup() {
-        0;
-    }
+    export function setup() { 0; }
 
-    // Shim for getMaxNotePower
+    /** Returns the highest normalized power among all 36 notes (0–1000 scale). */
     //% shim=frequencies::getMaxNotePower
-    export function getMaxNotePower(): number {
-        return 0;
-    }
+    export function getMaxNotePower(): number { return 0; }
 
-    export function initialize() {
-        if(initialized) return;
-        initialized = true;
-        onNotesUpdated(doOnNotesUpdated);
-        setup();
-    }
-
-    export function getNoteIndex(note: Note): number {
-        for (let i = 0; i < notes.length; i++) {
-            if (notes[i] == note) return i;
-        }
-        return -1;
-    }
-
+    /** Returns the squared magnitude of the highest-power FFT bin across the full spectrum. */
     //% shim=frequencies::getMaxBinPower
-    export function getMaxBinPower(): number {
-        return 0;
-    }
+    export function getMaxBinPower(): number { return 0; }
 
+    /** Returns the index (0–2047) of the highest-power FFT bin. Multiply by getBinWidth() to get Hz. */
     //% shim=frequencies::getMaxBinIndex
-    export function getMaxBinIndex(): number {
-        return 0;
-    }
-    
+    export function getMaxBinIndex(): number { return 0; }
+
+    /** Returns the width of each FFT bin in Hz (~2.71 Hz). */
     //% shim=frequencies::getBinWidth
-    export function getBinWidth(): number {
-        return 0;
-    }
+    export function getBinWidth(): number { return 0; }
 
 }
 

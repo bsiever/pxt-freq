@@ -46,31 +46,31 @@ frequencies.stopNote(function (note: Note, cents: number) {
 // })
     
 
-// frequencies.watchMaxPower(function (lowFrequency: number, highFrequency: number, power: number) {
-//     if (power > 10000) {
-//         let noteBelow = frequencies.getNoteForBelowOrEqual(lowFrequency);
-//         let noteAbove = frequencies.getNoteForAboveOrEqual(highFrequency);
-//         let noteBelowString = frequencies.noteToString(noteBelow);
-//         let noteAboveString = frequencies.noteToString(noteAbove);
-//         serial.writeLine(noteBelowString + " - " + noteAboveString + "   Max power " + power + "  (" + lowFrequency + "-" + highFrequency + " Hz)" )
-//         // Alternative way to get note strings without calling noteToString multiple times:
-//         basic.clearScreen();
-//         let noteNumber = frequencies.getNoteIndex(noteBelow);
-//         led.plot(noteNumber % 5, Math.floor(noteNumber / 5))
-//         noteNumber = frequencies.getNoteIndex(noteAbove);
-//         led.plot(noteNumber % 5, Math.floor(noteNumber / 5))
+frequencies.watchMaxPower(function (lowFrequency: number, highFrequency: number, power: number) {
+    if (power > 10000) {
+        let noteBelow = frequencies.getNoteForBelowOrEqual(lowFrequency);
+        let noteAbove = frequencies.getNoteForAboveOrEqual(highFrequency);
+        let noteBelowString = frequencies.noteToString(noteBelow);
+        let noteAboveString = frequencies.noteToString(noteAbove);
+        serial.writeLine(noteBelowString + " - " + noteAboveString + "   Max power " + power + "  (" + lowFrequency + "-" + highFrequency + " Hz)" )
+        // Alternative way to get note strings without calling noteToString multiple times:
+        basic.clearScreen();
+        let noteNumber = frequencies.getNoteIndex(noteBelow);
+        led.plot(noteNumber % 5, Math.floor(noteNumber / 5))
+        noteNumber = frequencies.getNoteIndex(noteAbove);
+        led.plot(noteNumber % 5, Math.floor(noteNumber / 5))
         
-//     }
-// })
-
-
-frequencies.watchNote(Note.C4, function (theNote, power, cents) {
-    if (power > 0) {
-        basic.showIcon(IconNames.Heart,0)
-    } else {
-        basic.clearScreen()
     }
 })
+
+
+// frequencies.watchNote(Note.C4, function (theNote, power, cents) {
+//     if (power > 0) {
+//         basic.showIcon(IconNames.Heart,0)
+//     } else {
+//         basic.clearScreen()
+//     }
+// })
 
 input.onButtonPressed(Button.A, function () {
     // Enable microphone sampling 
