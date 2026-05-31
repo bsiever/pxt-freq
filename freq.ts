@@ -191,6 +191,26 @@ namespace frequencies {
         // argument of type number and return a number value.
         return arg;
     }
+    /** Convert an index to a Note enum */
+    //% block="note at index $index"
+    //% weight=4000
+    //% advanced=true
+    export function getNote(index: number): Note {
+        index = Math.max(0, Math.min(index, notes.length - 1));
+        return notes[index];
+    }
+
+    /** Convert a Note enum to an index */
+    //% block="index of $note"
+    //% weight=3900
+    //% advanced=true
+    export function getNoteIndex(note: Note): number {
+        for (let i = 0; i < notes.length; i++) {
+            if (notes[i] == note) return i;
+        }
+        return -1;
+    }
+
 
     // ************* Private / Internal Functions ******************
 
@@ -199,19 +219,6 @@ namespace frequencies {
         initialized = true;
         onNotesUpdated(doOnNotesUpdated);
         setup();
-    }
-
-    /** Convert an index to a Note enum */
-    function getNote(index: number): Note {
-        index = Math.max(0, Math.min(index, notes.length - 1));
-        return notes[index];
-    }
-
-    export function getNoteIndex(note: Note): number {
-        for (let i = 0; i < notes.length; i++) {
-            if (notes[i] == note) return i;
-        }
-        return -1;
     }
 
     function doOnNotesUpdated() {
@@ -296,7 +303,8 @@ namespace frequencies {
     
     // ************* Private Shims to C++ ******************
 
-
+    // TODO: These probably don't need to be exported 
+    
     // Shim for onNotesUpdated - called by C++ when new results are available
     //% shim=frequencies::onNotesUpdated
     export function onNotesUpdated(handler: Action) { 0; }
