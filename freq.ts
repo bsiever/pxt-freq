@@ -93,6 +93,47 @@ namespace frequencies {
         noteWatchHandlers.push([note, handler])
     } 
 
+    const BIN_WIDTH=getBinWidth(); // Hz/bin
+
+    // Given a specific frequency, if it's in a bin for a specific note, return that note.  Otherwise return the closest note below the given frequency
+    //% block="note for frequency below or equal to $frequency"
+    export function getNoteForBelowOrEqual(frequency: number): Note {
+        // Iterate through note frequencies:
+        // Move the frequency to the middle of it's bin
+        let i = 0;
+        while (i < noteFrequencies.length) {
+            let binIndex = Math.floor(noteFrequencies[i] / BIN_WIDTH);
+            let lowFrequency = binIndex * BIN_WIDTH;
+            let highFrequency = lowFrequency + BIN_WIDTH;
+
+
+            // If it's in this bucket
+            if(frequency==lowFrequency)
+                return getNote(i);
+            else if (frequency < lowFrequency) {
+                return getNote(i-1);
+            }
+            i++;
+        }
+        return getNote(noteFrequencies.length - 1);
+    }
+
+    // Given a specific frequency, if it's in a bin for a specific note, return that note.  Otherwise return the closest note above the given frequency
+    //% block="note for frequency above or equal to $frequency"
+    export function getNoteForAboveOrEqual(frequency: number): Note {
+        let i = noteFrequencies.length - 2;
+        while (i >= 0) {
+            let binIndex = Math.ceil(noteFrequencies[i] / BIN_WIDTH);
+            let highFrequency = binIndex * BIN_WIDTH;
+            if(highFrequency == frequency)
+                return getNote(i);
+            if (highFrequency < frequency) 
+                return getNote(i+1);
+            i--;
+        }
+        return getNote(0);  
+    } 
+
 
     // Array of notes mapping C++ index (0=C3 … B5) to Note enum values
     const notes = [
@@ -113,6 +154,14 @@ namespace frequencies {
         "F#5", "G5", "G#5", "A5", "Bb5", "B5"
     ];
 
+    const noteFrequencies = [
+        130.81, 138.59, 146.83, 155.56, 164.81, 174.61,
+        185.00, 196.00, 207.65, 220.00, 233.08, 246.94,
+        261.63, 277.18, 293.66, 311.13, 329.63, 349.23,
+        369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
+        523.25, 554.37, 587.33, 622.25, 659.25, 698.46,
+        739.99, 783.99, 830.61, 880.00, 932.33, 987.77
+    ];
 
     //% shim=ENUM_GET
     //% blockId=note_enum_shim
@@ -141,6 +190,7 @@ namespace frequencies {
 
     /** Convert an index to a Note enum */
     function getNote(index: number): Note {
+        index = Math.max(0, Math.min(index, notes.length - 1));
         return notes[index];
     }
 
@@ -233,28 +283,6 @@ namespace frequencies {
                     break;
             }
         }   
-
-        // if (maxPower > 5 * avgPower && maxPower > 10000) {
-        //     for (let i = 0; i < getNumNotes(); i++) {
-        //         let power = getNotePower(i);
-        //         if (power > maxPower / 2) {
-        //             serial.writeLine("Note " + noteToString(getNote(i)) + " is loud with power " + power + " and cents " + getNoteCents(i))
-        //         }
-        //     }
-        // }   
-
-        // serial.writeLine("Max Power " + getMaxNotePower() + ", Avg Power  " + getAvgNotePower())
-        // // Print out note name, not power, and cents for each note that has changed since the last update
-        // for (let i = 0; i < getNumNotes(); i++) {
-        //     // Print out the note name, note power, note cents
-        //     serial.writeLine("Note " + noteToString(getNote(i)) + " = " + getNotePower(i) + " power, " + getNoteCents(i) + " cents")
-        //     pause(100)
-        // }   
-        // // Print all bin values too
-        // for(let i = 0; i < 2048 / 2; i++) {
-        //     serial.writeLine("Bin " + i + " = " + getBin(i))
-        // }
-
     }
 
 

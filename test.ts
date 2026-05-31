@@ -47,7 +47,15 @@ frequencies.watchNote(Note.B3, function (note: Note, power: number, cents: numbe
     
 
 frequencies.watchMaxPower(function (lowFrequency: number, highFrequency: number, power: number) {
-    serial.writeLine("Max power " + power + " in range " + lowFrequency + "-" + highFrequency)
+    if (power > 10000) {
+        let noteBelow = frequencies.getNoteForBelowOrEqual(lowFrequency);
+        let noteAbove = frequencies.getNoteForAboveOrEqual(highFrequency);
+        let noteBelowString = frequencies.noteToString(noteBelow);
+        let noteAboveString = frequencies.noteToString(noteAbove);
+        serial.writeLine(noteBelowString + " - " + noteAboveString + "   Max power " + power + "  (" + lowFrequency + "-" + highFrequency + " Hz)" )
+        // Alternative way to get note strings without calling noteToString multiple times:
+        
+    }
 })
 
 input.onButtonPressed(Button.A, function () {
